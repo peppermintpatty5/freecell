@@ -1,7 +1,7 @@
 #ifndef _CARD_H_
 #define _CARD_H_
 
-#define NUM_CARDS 52
+#define NUM_CARDS (52)
 
 /**
  * Composes a byte (char) through bitshift + OR. Bits 0-1 are suit, bits 2-5
