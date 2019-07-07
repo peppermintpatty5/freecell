@@ -21,6 +21,37 @@ void hidecursor(void)
     gotoxy(1, 1);
 }
 
+int confirm_yn(char *message)
+{
+    signed int status = -1;
+    gotoxy(1, 25);
+    textcolor(LIGHTGREEN);
+    textbackground(BLACK);
+    cprintf("%s (Y/N)", message);
+    hidecursor();
+
+    while (status < 0)
+    {
+        switch (getch())
+        {
+        case 'y':
+        case 'Y':
+            status = 1;
+            break;
+        case 'n':
+        case 'N':
+            status = 0;
+            break;
+        default:
+            break;
+        }
+    }
+    gotoxy(1, 25);
+    delline();
+
+    return status;
+}
+
 void goto_freecell(int index)
 {
     gotoxy(3, 3 + 2 * index);
@@ -120,9 +151,9 @@ void refresh_homecells(void)
     }
 }
 
-void deal(int n)
+void deal(unsigned int n)
 {
-    unsigned char i, j, t, i_ = 0;
+    unsigned int i, j, t, i_ = 0;
     char deck[NUM_CARDS];
 
     for (i = 0; i < NUM_CARDS; i++)
@@ -282,39 +313,16 @@ int main(void)
         {
         case 'q':
         case 'Q':
-            gotoxy(1, 25);
-            textcolor(LIGHTGREEN);
-            textbackground(BLACK);
-            cprintf("Press 'q' again to confirm exit.");
-            hidecursor();
-            key = getch();
-            if (key == 'q' || key == 'Q')
+            if (confirm_yn("Quit game?"))
                 goto RET;
-            else
-            {
-                gotoxy(1, 25);
-                delline();
-            }
             break;
         case 'n':
         case 'N':
-            /* TODO shorten rendunant confirmation code */
-            gotoxy(1, 25);
-            textcolor(LIGHTGREEN);
-            textbackground(BLACK);
-            cprintf("Press 'n' again to confirm new game.");
-            hidecursor();
-            key = getch();
-            if (key == 'n' || key == 'N')
+            if (confirm_yn("Start a new game?"))
             {
                 selection = SELECT_NONE;
                 newgame();
                 refresh();
-            }
-            else
-            {
-                gotoxy(1, 25);
-                delline();
             }
             break;
         case 'a':

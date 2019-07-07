@@ -17,6 +17,13 @@ enum selection_types
 void hidecursor(void);
 
 /**
+ * Displays confirmation message on bottom line of screen and waits for user to
+ * type 'Y' or 'N'. The line is then erases when either choice has been made.
+ * Return values are non-zero for 'yes' and zero for 'no'.
+ */
+int confirm_yn(char *message);
+
+/**
  * Move the cursor to the nth freecell.
  */
 void goto_freecell(int index);
@@ -34,7 +41,7 @@ void refresh_homecells(void);
 /**
  * Deal n many shuffled decks to the cascades.
  */
-void deal(int n);
+void deal(unsigned int n);
 
 void newgame(void);
 
