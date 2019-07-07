@@ -1,10 +1,11 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
-#define NUM_CASCADES 8
-#define NUM_FREECELLS 4
-#define NUM_HOMECELLS 4
-#define MAX_CASCADE_SIZE 20
+#define NUM_DECKS (2)
+#define NUM_CASCADES (10)
+#define NUM_FREECELLS (8)
+#define NUM_HOMECELLS (8)
+#define MAX_CASCADE_SIZE (24)
 
 enum selection_types
 {
@@ -30,7 +31,10 @@ void refresh_freecells(void);
 
 void refresh_homecells(void);
 
-void deal(void);
+/**
+ * Deal n many shuffled decks to the cascades.
+ */
+void deal(int n);
 
 void newgame(void);
 
