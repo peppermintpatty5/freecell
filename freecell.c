@@ -23,12 +23,12 @@ void hidecursor(void)
 
 void goto_freecell(int index)
 {
-    gotoxy(3, 4 + 4 * index);
+    gotoxy(3, 3 + 2 * index);
 }
 
 void gotocc(char cascadei, char cardi)
 {
-    gotoxy(cascadei * 6 + 17, cardi + 3);
+    gotoxy(cascadei * 6 + 11, cardi + 3);
 }
 
 void pretty_borders(char x, char y)
@@ -67,13 +67,13 @@ void refresh(void)
     /* numbers on the top of the screen */
     textcolor(LIGHTGRAY);
     gotoxy(5, 1);
-    cprintf("0");
+    cprintf("A");
     gotoxy(75, 1);
-    cprintf("9");
+    cprintf("B");
     for (i = 0; i < NUM_CASCADES; i++)
     {
         gotocc(i, -2);
-        cprintf("  %d", i + 1);
+        cprintf("  %d", i);
     }
     /* print the cascades */
     for (i = 0; i < NUM_CASCADES; i++)
@@ -108,35 +108,40 @@ void refresh_homecells(void)
 
     for (i = 0; i < NUM_HOMECELLS; i++)
     {
-        gotoxy(73, 4 + 4 * i);
+        gotoxy(73, 3 + 2 * i);
         if (homecells[i] == NUM_CARDS)
         {
             textcolor(DARKGRAY);
             textbackground(BLACK);
-            cprintf(" %c", i + '\3');
+            cprintf(" %c", i / NUM_DECKS + '\3');
         }
         else
             cardprint(homecells[i], 0);
     }
 }
 
-void deal(void)
+void deal(int n)
 {
-    unsigned char i, j, t;
+    unsigned char i, j, t, i_ = 0;
     char deck[NUM_CARDS];
-    /* shuffle */
+
     for (i = 0; i < NUM_CARDS; i++)
         deck[51 - i] = i;
-    for (i = NUM_CARDS - 1; i > 0; i--)
+    while (n-- > 0)
     {
-        j = rand() % i;
-        t = deck[i];
-        deck[i] = deck[j];
-        deck[j] = t;
+        /* shuffle */
+        for (i = NUM_CARDS - 1; i > 0; i--)
+        {
+            j = rand() % i;
+            t = deck[i];
+            deck[i] = deck[j];
+            deck[j] = t;
+        }
+        /* deal */
+        for (i = 0; i < NUM_CARDS; i++)
+            c_push(cascades[(i + i_) % NUM_CASCADES], deck[i]);
+        i_ = i % NUM_CASCADES;
     }
-    /* deal */
-    for (i = 0; i < NUM_CARDS; i++)
-        c_push(cascades[i % NUM_CASCADES], deck[i]);
 }
 
 void newgame(void)
@@ -146,8 +151,7 @@ void newgame(void)
     for (i = 0; i < NUM_CASCADES; i++)
         c_clr(cascades[i]);
     srand(time(NULL));
-    for (i = 0; i < 1; i++)
-        deal();
+    deal(NUM_DECKS);
     /* clear freecells */
     c_clr(freecells);
     /* clear homecells */
@@ -215,41 +219,38 @@ int cascade_to_freecell(char srci)
 
 int to_homecell(char srci, enum selection_types selection)
 {
-    char a, b, valid;
+    char a, b, valid = 0, i, dsti;
 
-    switch (selection)
+    a = selection == SELECT_FREECELL
+            ? freecells->cards[srci]
+            : c_peek(cascades[srci]);
+
+    for (i = 0; i < NUM_DECKS; i++)
     {
-    case SELECT_FREECELL:
-        a = freecells->cards[srci];
-        break;
-    case SELECT_CASCADE:
-        a = c_peek(cascades[srci]);
-        break;
-    }
-
-    b = homecells[getsuit(a)];
-    valid = (getrank(a) == 0 && b == NUM_CARDS) ||
-            (getrank(a) - getrank(b) == 1);
-
-    if (valid)
-    {
-        switch (selection)
+        dsti = getsuit(a) * NUM_DECKS + i;
+        b = homecells[dsti];
+        valid = (getrank(a) == 0 && b == NUM_CARDS) ||
+                (getrank(a) - getrank(b) == 1);
+        if (valid)
         {
-        case SELECT_FREECELL:
-            homecells[getsuit(a)] = c_rm(freecells, srci);
-            refresh_freecells();
-            break;
-
-        default:
-            homecells[getsuit(a)] = c_pop(cascades[srci]);
-            gotocc(srci, cascades[srci]->size);
-            carderase();
-            break;
+            switch (selection)
+            {
+            case SELECT_FREECELL:
+                homecells[dsti] = c_rm(freecells, srci);
+                refresh_freecells();
+                break;
+            case SELECT_CASCADE:
+                homecells[dsti] = c_pop(cascades[srci]);
+                gotocc(srci, cascades[srci]->size);
+                carderase();
+                break;
+            }
+            refresh_homecells();
+            return 1;
         }
-        refresh_homecells();
     }
 
-    return valid;
+    return 0;
 }
 
 void init(void)
@@ -316,7 +317,8 @@ int main(void)
                 delline();
             }
             break;
-        case '0':
+        case 'a':
+        case 'A':
             switch (selection)
             {
             case SELECT_NONE:
@@ -347,7 +349,8 @@ int main(void)
                 break;
             }
             break;
-        case '9':
+        case 'b':
+        case 'B':
             switch (selection)
             {
             case SELECT_NONE:
@@ -364,7 +367,7 @@ int main(void)
             }
             break;
         default:
-            i = key - '1';
+            i = key - '0';
             if (i >= 0 && i < NUM_CASCADES)
             {
                 switch (selection)
