@@ -18,7 +18,7 @@ void hidecursor(void);
 
 /**
  * Displays confirmation message on bottom line of screen and waits for user to
- * type 'Y' or 'N'. The line is then erases when either choice has been made.
+ * type 'y' or 'n'. The line is then erased when either choice has been made.
  * Return values are non-zero for 'yes' and zero for 'no'.
  */
 int confirm_yn(char *message);

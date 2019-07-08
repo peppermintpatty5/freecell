@@ -33,20 +33,20 @@ char c_peek(struct cascade_t *stack)
 
 char c_pop(struct cascade_t *stack)
 {
-    return stack->cards[--(stack->size)];
+    return stack->cards[--stack->size];
 }
 
 void c_push(struct cascade_t *stack, char card)
 {
-    stack->cards[(stack->size)++] = card;
+    stack->cards[stack->size++] = card;
 }
 
 char c_rm(struct cascade_t *stack, size_t index)
 {
-    char i, rm;
+    size_t i;
+    char rm = stack->cards[index];
 
     stack->size--;
-    rm = stack->cards[index];
     for (i = index; i < stack->size; i++)
         stack->cards[i] = stack->cards[i + 1];
 
