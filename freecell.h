@@ -1,7 +1,7 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
-#define NUM_DECKS (2)
+#define NUM_DECKS (1)
 #define NUM_CASCADES (10)
 #define NUM_FREECELLS (8)
 #define NUM_HOMECELLS (8)
@@ -46,6 +46,11 @@ void deal(unsigned int n);
 void newgame(void);
 
 /**
+ * Determines if card a can be stacked on top of card b.
+ */
+int can_stack(char a, char b);
+
+/**
  * Attempt to transfer card from one cascade to another, according to the rules
  * of FreeCell. Returns 0 if failed, non-zero if succeeded.
  * 
@@ -53,16 +58,21 @@ void newgame(void);
  * 
  * Also performs graphical updates (hopefully).
  */
-int cascade_to_cascade(char srci, char dsti);
+int cascade_to_cascade(int srci, int dsti);
 
 /**
- * Determines if card a can be stacked on top of card b.
+ * A (probably) recursive function that moves multiple cards from one stack to
+ * another.
+ * 
+ * Destination index can refer to empty cascade, while source index cannot.
+ * 
+ * Also does cool animation if you want to see it.
  */
-int can_stack(char a, char b);
+int cascade_to_cascade_m(int srci, int dsti);
 
-int freecell_to_cascade(char srci, char dsti);
+int freecell_to_cascade(int srci, int dsti);
 
-int cascade_to_freecell(char srci);
+int cascade_to_freecell(int srci);
 
 /**
  * Attemps to move card from a freecell or cascade to the homecells.

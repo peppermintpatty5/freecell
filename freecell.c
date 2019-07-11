@@ -190,12 +190,18 @@ void newgame(void)
 		homecells[i] = NUM_CARDS;
 }
 
-int cascade_to_cascade(char srci, char dsti)
+int can_stack(char a, char b)
+{
+	return getrank(b) - getrank(a) == 1 &&
+		   isblack(a) != isblack(b);
+}
+
+int cascade_to_cascade(int srci, int dsti)
 {
 	struct cascade_t *src = cascades[srci],
 					 *dst = cascades[dsti];
-	char valid = dst->size == 0 ||
-				 can_stack(c_peek(src), c_peek(dst));
+	int valid = dst->size == 0 ||
+				can_stack(c_peek(src), c_peek(dst));
 
 	if (valid)
 	{
@@ -209,17 +215,29 @@ int cascade_to_cascade(char srci, char dsti)
 	return valid;
 }
 
-int can_stack(char a, char b)
+int cascade_to_cascade_m(int srci, int dsti)
 {
-	return getrank(b) - getrank(a) == 1 &&
-		   isblack(a) != isblack(b);
+	struct cascade_t *src = cascades[srci],
+					 *dst = cascades[dsti];
+	size_t i, j;
+	/* Determine if src contains a card which is stackable onto dst */
+	for (i = src->size; i > 0; i--)
+	{
+		if (dst->size == 0 || can_stack(src->cards[i - 1], c_peek(dst)))
+			break;
+	}
+	/* All cards above it must be continuously stackable as well */
+	for (j = src->size - 1; j > i; j--)
+	{
+		/* TODO */
+	}
 }
 
-int freecell_to_cascade(char srci, char dsti)
+int freecell_to_cascade(int srci, int dsti)
 {
 	struct cascade_t *dst = cascades[dsti];
-	char valid = dst->size == 0 ||
-				 can_stack(freecells->cards[srci], c_peek(dst));
+	int valid = dst->size == 0 ||
+				can_stack(freecells->cards[srci], c_peek(dst));
 
 	if (valid)
 	{
@@ -232,10 +250,10 @@ int freecell_to_cascade(char srci, char dsti)
 	return valid;
 }
 
-int cascade_to_freecell(char srci)
+int cascade_to_freecell(int srci)
 {
 	struct cascade_t *src = cascades[srci];
-	char valid = freecells->size < NUM_FREECELLS;
+	int valid = freecells->size < NUM_FREECELLS;
 
 	if (valid)
 	{
