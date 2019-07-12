@@ -68,7 +68,7 @@ int cascade_to_cascade(int srci, int dsti);
  * 
  * Also does cool animation if you want to see it.
  */
-int cascade_to_cascade_m(int srci, int dsti);
+int cascade_to_cascade_m(int srci, int dsti, int delay_ms);
 
 int freecell_to_cascade(int srci, int dsti);
 

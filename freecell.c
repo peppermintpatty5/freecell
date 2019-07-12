@@ -224,13 +224,13 @@ int cascade_to_cascade(int srci, int dsti)
 	return valid;
 }
 
-int cascade_to_cascade_m(int srci, int dsti)
+int cascade_to_cascade_m(int srci, int dsti, int delay_ms)
 {
 	struct cascade_t *src = cascades[srci],
 					 *dst = cascades[dsti];
 	size_t count = count_stack_streak(src), i,
 		   nfree = NUM_FREECELLS - freecells->size;
-
+	/* Determine how many cards need to be moved, stored in 'count' */
 	if (dst->size)
 	{
 		while (count && !can_stack(src->cards[src->size - count], c_peek(dst)))
@@ -244,9 +244,19 @@ int cascade_to_cascade_m(int srci, int dsti)
 	/* Recursive and base cases */
 	if (count > nfree + 1)
 	{
-		cprintf("TODO");
-
-		return 0;
+		/* Locate an empty cascade to use intermediately */
+		for (i = 0; i < NUM_CASCADES; i++)
+		{
+			if (!cascades[i]->size)
+				break;
+		}
+		if (i < NUM_CASCADES)
+		{
+			cascade_to_cascade_m(srci, i, delay_ms);
+			cascade_to_cascade_m(srci, dsti, delay_ms);
+			cascade_to_cascade_m(i, dsti, delay_ms);
+		}
+		return 1;
 	}
 	else
 	{
@@ -255,20 +265,19 @@ int cascade_to_cascade_m(int srci, int dsti)
 		{
 			for (i = 0; i < count - 1; i++)
 			{
-				delay(100);
 				cascade_to_freecell(srci);
+				hidecursor();
+				delay(delay_ms);
 			}
 			cascade_to_cascade(srci, dsti);
 			for (i = 0; i < count - 1; i++)
 			{
-				delay(100);
+				delay(delay_ms);
 				freecell_to_cascade(freecells->size - 1, dsti);
+				hidecursor();
 			}
-
-			return 1;
 		}
-		else
-			return 0;
+		return !!count;
 	}
 }
 
@@ -364,36 +373,36 @@ void init(void)
 
 	for (i = 0; i < NUM_CASCADES; i++)
 		cascades[i] = cascade_new(MAX_CASCADE_SIZE);
+
 	freecells = cascade_new(NUM_FREECELLS);
+
+	for (i = 0; i < NUM_HOMECELLS; i++)
+		homecells[i] = NUM_CARDS;
 }
 
-#define DEBUG 0
+#define DEBUG 1
 int main(void)
 {
-#if DEBUG
-	struct cascade_t *s = cascade_new(10);
-	size_t i;
-
-	c_push(s, getcard(10, 2));
-	c_push(s, getcard(9, 0));
-	c_push(s, getcard(6, 3));
-	c_push(s, getcard(8, 2));
-	c_push(s, getcard(7, 0));
-
-	for (i = 0; i < s->size; i++)
-		cardprint(s->cards[i], 0);
-	printf("Stack streak: %d\n", count_stack_streak(s));
-#else
 	enum selection_types selection = SELECT_NONE;
 	signed int srci, i, key;
-
+#if DEBUG
+	init();
+	for (i = 0; i < 13; i++)
+		c_push(cascades[0], getcard(13 - i - 1, i % 2 << 1));
+	for (i = 1; i < NUM_CASCADES; i++)
+		c_push(cascades[i], getcard(12, 0));
+	for (i = 2; i < NUM_CASCADES; i++)
+		c_push(cascades[i], getcard(11, 2));
+	refresh();
+#else
 	init();
 	newgame();
 	refresh();
-
+#endif
 	do
 	{
 		hidecursor();
+		cprintf("srci: %d", srci);
 		key = getch();
 		switch (key)
 		{
@@ -487,7 +496,7 @@ int main(void)
 						cardprint(c_peek(cascades[srci]), 0);
 						selection = SELECT_NONE;
 					}
-					else if (cascade_to_cascade_m(srci, i))
+					else if (cascade_to_cascade_m(srci, i, 80))
 						selection = SELECT_NONE;
 					break;
 				}
@@ -501,5 +510,4 @@ RET:
 	textcolor(LIGHTGRAY);
 	clrscr();
 	return EXIT_SUCCESS;
-#endif
 }
