@@ -54,7 +54,7 @@ int can_stack(char a, char b);
  * Attempt to transfer card from one cascade to another, according to the rules
  * of FreeCell. Returns 0 if failed, non-zero if succeeded.
  * 
- * Destination index can refer to empty cascade, while source index cannot.
+ * Destination index may refer to empty cascade, while source index may not.
  * 
  * Also performs graphical updates (hopefully).
  */
@@ -64,7 +64,7 @@ int cascade_to_cascade(int srci, int dsti);
  * A (probably) recursive function that moves multiple cards from one stack to
  * another.
  * 
- * Destination index can refer to empty cascade, while source index cannot.
+ * Destination index may refer to empty cascade, while source index may not.
  * 
  * Also does cool animation if you want to see it.
  */
@@ -77,7 +77,7 @@ int cascade_to_freecell(int srci);
 /**
  * Attemps to move card from a freecell or cascade to the homecells.
  */
-int to_home(char srci, enum selection_types selection);
+int to_homecell(int srci, enum selection_types selection);
 
 /**
  * Initializes static variables and sets up display. Only call once!

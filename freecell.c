@@ -7,6 +7,14 @@
 #include "cascade.h"
 #include "freecell.h"
 
+/**
+ * Helper function that returns the number of continuously stackable cards from
+ * the top of the cascade. The minimum value of 1 indicates that the top card
+ * is not stackable on the card beneath it. By contrast, a value equal to
+ * 'src->size' indicates that the entire cascade is a valid FreeCell stack.
+ */
+static size_t count_stack_streak(struct cascade_t *src);
+
 static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
 				  BORDER_MID[] = {199, 196, 196, 196, 196, 196, 196, 182, 0},
 				  BORDER_BOT[] = {200, 205, 205, 205, 205, 205, 205, 188, 0},
@@ -219,18 +227,32 @@ int cascade_to_cascade_m(int srci, int dsti)
 {
 	struct cascade_t *src = cascades[srci],
 					 *dst = cascades[dsti];
-	size_t i, j;
-	/* Determine if src contains a card which is stackable onto dst */
-	for (i = src->size; i > 0; i--)
+	size_t count = count_stack_streak(src),
+		   nfree = NUM_FREECELLS - freecells->size;
+
+	if (dst->size)
 	{
-		if (dst->size == 0 || can_stack(src->cards[i - 1], c_peek(dst)))
+		while (count && !can_stack(src->cards[src->size - count], c_peek(dst)))
+			count--;
+	}
+	else
+	{
+		if (nfree < count)
+			count = nfree;
+	}
+}
+
+static size_t count_stack_streak(struct cascade_t *src)
+{
+	size_t i;
+
+	for (i = src->size - 1; i > 0; i--)
+	{
+		if (!can_stack(src->cards[i], src->cards[i - 1]))
 			break;
 	}
-	/* All cards above it must be continuously stackable as well */
-	for (j = src->size - 1; j > i; j--)
-	{
-		/* TODO */
-	}
+
+	return src->size - i;
 }
 
 int freecell_to_cascade(int srci, int dsti)
@@ -266,9 +288,10 @@ int cascade_to_freecell(int srci)
 	return valid;
 }
 
-int to_homecell(char srci, enum selection_types selection)
+int to_homecell(int srci, enum selection_types selection)
 {
-	char a, b, valid = 0, i, dsti;
+	char a, b;
+	int valid, i, dsti;
 
 	a = selection == SELECT_FREECELL
 			? freecells->cards[srci]
@@ -314,8 +337,23 @@ void init(void)
 	freecells = cascade_new(NUM_FREECELLS);
 }
 
+#define DEBUG 1
 int main(void)
 {
+#if DEBUG
+	struct cascade_t *s = cascade_new(10);
+	size_t i;
+
+	c_push(s, getcard(10, 2));
+	c_push(s, getcard(9, 0));
+	c_push(s, getcard(6, 3));
+	c_push(s, getcard(8, 2));
+	c_push(s, getcard(7, 0));
+
+	for (i = 0; i < s->size; i++)
+		cardprint(s->cards[i], 0);
+	printf("Stack streak: %d\n", count_stack_streak(s));
+#else
 	enum selection_types selection = SELECT_NONE;
 	signed int srci, i, key;
 
@@ -433,4 +471,5 @@ RET:
 	textcolor(LIGHTGRAY);
 	clrscr();
 	return EXIT_SUCCESS;
+#endif
 }

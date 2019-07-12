@@ -5,9 +5,8 @@
 
 /**
  * Composes a byte (char) through bitshift + OR. Bits 0-1 are suit, bits 2-5
- * are rank, and bits 6-7 are unused.
- * 
- * Rank shall be from 0-12 and suit shall be from 0-3.
+ * are rank, and bits 6-7 are unused. Rank shall be from 0-12 and suit shall be
+ * from 0-3. Macro is used mainly for debugging.
  */
 #define getcard(rank, suit) (((rank) << 2) | (suit))
 #define getrank(card) ((card) >> 2)
