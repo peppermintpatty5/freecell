@@ -1,7 +1,7 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
-#define NUM_DECKS (1)
+#define NUM_DECKS (2)
 #define NUM_CASCADES (10)
 #define NUM_FREECELLS (8)
 #define NUM_HOMECELLS (8)

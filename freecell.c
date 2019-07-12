@@ -4,6 +4,7 @@
 
 #include "conio.h"
 #include "card.h"
+#include "dos.h"
 #include "cascade.h"
 #include "freecell.h"
 
@@ -227,7 +228,7 @@ int cascade_to_cascade_m(int srci, int dsti)
 {
 	struct cascade_t *src = cascades[srci],
 					 *dst = cascades[dsti];
-	size_t count = count_stack_streak(src),
+	size_t count = count_stack_streak(src), i,
 		   nfree = NUM_FREECELLS - freecells->size;
 
 	if (dst->size)
@@ -237,8 +238,37 @@ int cascade_to_cascade_m(int srci, int dsti)
 	}
 	else
 	{
-		if (nfree < count)
-			count = nfree;
+		if (count > nfree + 1)
+			count = nfree + 1;
+	}
+	/* Recursive and base cases */
+	if (count > nfree + 1)
+	{
+		cprintf("TODO");
+
+		return 0;
+	}
+	else
+	{
+		/* Do NOT try to move 0 cards - unsigned underflow! */
+		if (count)
+		{
+			for (i = 0; i < count - 1; i++)
+			{
+				delay(100);
+				cascade_to_freecell(srci);
+			}
+			cascade_to_cascade(srci, dsti);
+			for (i = 0; i < count - 1; i++)
+			{
+				delay(100);
+				freecell_to_cascade(freecells->size - 1, dsti);
+			}
+
+			return 1;
+		}
+		else
+			return 0;
 	}
 }
 
@@ -337,7 +367,7 @@ void init(void)
 	freecells = cascade_new(NUM_FREECELLS);
 }
 
-#define DEBUG 1
+#define DEBUG 0
 int main(void)
 {
 #if DEBUG
@@ -457,7 +487,7 @@ int main(void)
 						cardprint(c_peek(cascades[srci]), 0);
 						selection = SELECT_NONE;
 					}
-					else if (cascade_to_cascade(srci, i))
+					else if (cascade_to_cascade_m(srci, i))
 						selection = SELECT_NONE;
 					break;
 				}
