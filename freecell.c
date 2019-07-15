@@ -16,6 +16,14 @@
  */
 static size_t count_stack_streak(struct cascade_t *src);
 
+/**
+ * Helper function that returns the number of cascades, other than the cascade
+ * specified, that are empty.
+ */
+static size_t count_empty_cascades(size_t dsti);
+
+static void idkman(size_t srci, size_t dsti, size_t count, int delay_ms);
+
 static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
 				  BORDER_MID[] = {199, 196, 196, 196, 196, 196, 196, 182, 0},
 				  BORDER_BOT[] = {200, 205, 205, 205, 205, 205, 205, 188, 0},
@@ -228,57 +236,58 @@ int cascade_to_cascade_m(int srci, int dsti, int delay_ms)
 {
 	struct cascade_t *src = cascades[srci],
 					 *dst = cascades[dsti];
-	size_t count = count_stack_streak(src), i,
-		   nfree = NUM_FREECELLS - freecells->size;
+	size_t count = count_stack_streak(src),
+		   num_empty = count_empty_cascades(dsti),
+		   num_free = NUM_FREECELLS - freecells->size,
+		   i;
 	/* Determine how many cards need to be moved, stored in 'count' */
 	if (dst->size)
 	{
 		while (count && !can_stack(src->cards[src->size - count], c_peek(dst)))
 			count--;
 	}
-	else
+	else if (!num_empty && count > num_free + 1)
 	{
-		if (count > nfree + 1)
-			count = nfree + 1;
+		/* Special case where 'dst' is the only empty cascade */
+		count = num_free + 1;
 	}
-	/* Recursive and base cases */
-	if (count > nfree + 1)
+	/* Do NOT try to move 0 cards - unsigned underflow! */
+	if (count)
 	{
-		/* Locate an empty cascade to use intermediately */
-		for (i = 0; i < NUM_CASCADES; i++)
+		/* Transfer can be done all in one shot */
+		if (count <= num_free + 1)
 		{
-			if (!cascades[i]->size)
-				break;
+			idkman(srci, dsti, count, delay_ms);
+
+			return count;
 		}
-		if (i < NUM_CASCADES)
+		/* Transfer must be done recursively with an empty cascade */
+		else
 		{
-			cascade_to_cascade_m(srci, i, delay_ms);
-			cascade_to_cascade_m(srci, dsti, delay_ms);
-			cascade_to_cascade_m(i, dsti, delay_ms);
-		}
-		return 1;
-	}
-	else
-	{
-		/* Do NOT try to move 0 cards - unsigned underflow! */
-		if (count)
-		{
-			for (i = 0; i < count - 1; i++)
+			/* Try to locate an empty cascade */
+			for (i = 0; i < NUM_CASCADES; i++)
 			{
-				cascade_to_freecell(srci);
-				hidecursor();
-				delay(delay_ms);
+				if (i != dsti && !cascades[i]->size)
+					break;
 			}
-			cascade_to_cascade(srci, dsti);
-			for (i = 0; i < count - 1; i++)
+			if (i < NUM_CASCADES)
 			{
-				delay(delay_ms);
-				freecell_to_cascade(freecells->size - 1, dsti);
-				hidecursor();
+				cascade_to_cascade_m(srci, i, delay_ms);
+				if (cascade_to_cascade_m(srci, dsti, delay_ms))
+				{
+					cascade_to_cascade_m(i, dsti, delay_ms);
+					return count;
+				}
+				/* Out of luck */
+				else
+					return 0;
 			}
+			else
+				return 0;
 		}
-		return !!count;
 	}
+	else
+		return 0;
 }
 
 static size_t count_stack_streak(struct cascade_t *src)
@@ -292,6 +301,38 @@ static size_t count_stack_streak(struct cascade_t *src)
 	}
 
 	return src->size - i;
+}
+
+static size_t count_empty_cascades(size_t dsti)
+{
+	size_t i, j;
+
+	for (i = 0, j = 0; i < NUM_CASCADES; i++)
+	{
+		if (!cascades[i]->size)
+			j++;
+	}
+
+	return j - !cascades[dsti]->size;
+}
+
+static void idkman(size_t srci, size_t dsti, size_t count, int delay_ms)
+{
+	size_t i;
+
+	for (i = 0; i < count - 1; i++)
+	{
+		cascade_to_freecell(srci);
+		hidecursor();
+		delay(delay_ms);
+	}
+	cascade_to_cascade(srci, dsti);
+	for (i = 0; i < count - 1; i++)
+	{
+		delay(delay_ms);
+		freecell_to_cascade(freecells->size - 1, dsti);
+		hidecursor();
+	}
 }
 
 int freecell_to_cascade(int srci, int dsti)
@@ -384,25 +425,20 @@ void init(void)
 int main(void)
 {
 	enum selection_types selection = SELECT_NONE;
-	signed int srci, i, key;
+	size_t srci, i, key;
+
+	init();
 #if DEBUG
-	init();
-	for (i = 0; i < 13; i++)
-		c_push(cascades[0], getcard(13 - i - 1, i % 2 << 1));
-	for (i = 1; i < NUM_CASCADES; i++)
-		c_push(cascades[i], getcard(12, 0));
-	for (i = 2; i < NUM_CASCADES; i++)
-		c_push(cascades[i], getcard(11, 2));
-	refresh();
+	for (i = 12; i >= 8; i--)
+		c_push(cascades[0], getcard(i, i % 2 << 1));
+	c_push(cascades[1], getcard(12, 0));
 #else
-	init();
 	newgame();
-	refresh();
 #endif
+	refresh();
 	do
 	{
 		hidecursor();
-		cprintf("srci: %d", srci);
 		key = getch();
 		switch (key)
 		{
@@ -437,14 +473,14 @@ int main(void)
 			case SELECT_FREECELL:
 				goto_freecell(srci);
 				cardprint(freecells->cards[srci], 0);
-				srci--;
-				if (srci < 0)
-					selection = SELECT_NONE;
-				else
+				if (srci)
 				{
+					srci--;
 					goto_freecell(srci);
 					cardprint(freecells->cards[srci], 1);
 				}
+				else
+					selection = SELECT_NONE;
 				break;
 			case SELECT_CASCADE:
 				if (cascade_to_freecell(srci))

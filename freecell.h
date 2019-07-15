@@ -2,16 +2,25 @@
 #define _FREECELL_H_
 
 #define NUM_DECKS (2)
-#define NUM_CASCADES (10)
-#define NUM_FREECELLS (8)
+#define NUM_CASCADES (4)
+#define NUM_FREECELLS (0)
 #define NUM_HOMECELLS (8)
 #define MAX_CASCADE_SIZE (24)
 
 enum selection_types
 {
-    SELECT_NONE,
-    SELECT_FREECELL,
-    SELECT_CASCADE
+	SELECT_NONE,
+	SELECT_FREECELL,
+	SELECT_CASCADE
+};
+
+/**
+ * TODO rename/put to use
+ */
+struct hanoi
+{
+	size_t size;
+	struct cascade_t *stacks[NUM_CASCADES];
 };
 
 void hidecursor(void);
