@@ -1,11 +1,9 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
-#define NUM_DECKS (2)
-#define NUM_CASCADES (4)
-#define NUM_FREECELLS (0)
-#define NUM_HOMECELLS (8)
 #define MAX_CASCADE_SIZE (24)
+#define MAX_CASCADES (10)
+#define MAX_FREECELLS (8)
 
 enum selection_types
 {
@@ -14,45 +12,32 @@ enum selection_types
 	SELECT_CASCADE
 };
 
-/**
- * TODO rename/put to use
- */
-struct hanoi
+enum game_types
 {
-	size_t size;
-	struct cascade_t *stacks[NUM_CASCADES];
+	SINGLE_DECK,
+	DOUBLE_DECK
 };
 
-void hidecursor(void);
-
 /**
- * Displays confirmation message on bottom line of screen and waits for user to
- * type 'y' or 'n'. The line is erased once either choice has been made. Return
- * values are non-zero for 'yes' and zero for 'no'.
+ * Struct containing the data for a game of FreeCell. Supports both single and
+ * double deck FreeCell variations.
  */
-int confirm_yn(char *message);
-
-/**
- * Move the cursor to the nth freecell.
- */
-void goto_freecell(int index);
-
-void gotocc(char cascadei, char cardi);
-
-void pretty_borders(char x, char y);
-
-void refresh(void);
-
-void refresh_freecells(void);
-
-void refresh_homecells(void);
+struct freecell_t
+{
+	size_t num_decks;
+	size_t num_cascades;
+	size_t num_freecells;
+	struct cascade_t *cascades[MAX_CASCADES];
+	struct cascade_t *freecells;
+	char homecells[NUM_SUITS * 2];
+};
 
 /**
  * Deal n many shuffled decks to the cascades.
  */
-void deal(unsigned int n);
+void deal(struct freecell_t *f);
 
-void newgame(void);
+void newgame(struct freecell_t *f, enum game_types gt);
 
 /**
  * Determines if card a can be stacked on top of card b.
@@ -87,12 +72,5 @@ int cascade_to_freecell(int srci);
  * Attemps to move card from a freecell or cascade to the homecells.
  */
 int to_homecell(int srci, enum selection_types selection);
-
-/**
- * Initializes static variables and sets up display. Only call once!
- */
-void init(void);
-
-int main(void);
 
 #endif
