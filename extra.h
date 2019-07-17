@@ -1,6 +1,6 @@
 #ifndef _EXTRA_H_
 #define _EXTRA_H_
-
+#if 0
 #include "cascade.h"
 
 /**
@@ -19,4 +19,15 @@ void idkman(size_t srci, size_t dsti, size_t count, int delay_ms);
  */
 size_t count_empty_cascades(size_t dsti);
 
+/**
+ * A (probably) recursive function that moves multiple cards from one stack to
+ * another.
+ * 
+ * Destination index may refer to empty cascade, while source index may not.
+ * 
+ * Also does cool animation if you want to see it.
+ */
+int cascade_to_cascade_m(int srci, int dsti, int delay_ms);
+
+#endif
 #endif

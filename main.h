@@ -8,7 +8,7 @@
  * type 'y' or 'n'. The line is erased once either choice has been made. Return
  * values are non-zero for 'yes' and zero for 'no'.
  */
-int confirm_yn(char *message);
+int confirm_yn(const char *message);
 
 /**
  * Move the cursor to the nth freecell.
@@ -17,9 +17,11 @@ void goto_freecell(int index);
 
 void gotocc(char cascadei, char cardi);
 
-void pretty_borders(char x, char y);
+void pretty_borders(int x, int y);
 
 void refresh(void);
+
+void refresh_cascade_tail(size_t index, int select);
 
 void refresh_freecells(void);
 

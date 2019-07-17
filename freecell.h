@@ -1,7 +1,12 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
-#define MAX_CASCADE_SIZE (24)
+/**
+ * A limitation of the 80x25 textmode, which is also the highest possible stack
+ * in a double deck FreeCell game.
+ */
+#define MAX_CASCADE_SIZE (23)
+#define MAX_DECKS (2)
 #define MAX_CASCADES (10)
 #define MAX_FREECELLS (8)
 
@@ -29,7 +34,7 @@ struct freecell_t
 	size_t num_freecells;
 	struct cascade_t *cascades[MAX_CASCADES];
 	struct cascade_t *freecells;
-	char homecells[NUM_SUITS * 2];
+	char homecells[NUM_SUITS * MAX_DECKS];
 };
 
 /**
@@ -40,37 +45,19 @@ void deal(struct freecell_t *f);
 void newgame(struct freecell_t *f, enum game_types gt);
 
 /**
- * Determines if card a can be stacked on top of card b.
+ * Determines if card 'a' can be stacked on top of card 'b'.
  */
 int can_stack(char a, char b);
 
-/**
- * Attempt to transfer card from one cascade to another, according to the rules
- * of FreeCell. Returns 0 if failed, non-zero if succeeded.
- * 
- * Destination index may refer to empty cascade, while source index may not.
- * 
- * Also performs graphical updates (hopefully).
- */
-int cascade_to_cascade(int srci, int dsti);
+int cascade_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
 
-/**
- * A (probably) recursive function that moves multiple cards from one stack to
- * another.
- * 
- * Destination index may refer to empty cascade, while source index may not.
- * 
- * Also does cool animation if you want to see it.
- */
-int cascade_to_cascade_m(int srci, int dsti, int delay_ms);
+int cascade_to_freecell(struct freecell_t *f, size_t srci);
 
-int freecell_to_cascade(int srci, int dsti);
-
-int cascade_to_freecell(int srci);
+int freecell_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
 
 /**
  * Attemps to move card from a freecell or cascade to the homecells.
  */
-int to_homecell(int srci, enum selection_types selection);
+int to_homecell(struct freecell_t *f, int srci, enum selection_types sel);
 
 #endif

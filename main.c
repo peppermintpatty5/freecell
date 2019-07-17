@@ -14,7 +14,7 @@ static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
 
 static struct freecell_t F;
 
-int confirm_yn(char *message)
+int confirm_yn(const char *message)
 {
 	int status = 2;
 
@@ -61,14 +61,14 @@ void gotocc(char cascadei, char cardi)
 	gotoxy(cascadei * 6 + 11, cardi + 3);
 }
 
-void pretty_borders(char x, char y)
+void pretty_borders(int x, int y)
 {
-	char i;
+	int i;
 
 	textcolor(BLUE);
 	textbackground(BLACK);
 
-	for (i = 0; i < 17; i++)
+	for (i = 0; i <= 16; i++)
 	{
 		gotoxy(x, i + y);
 		if (i == 0)
@@ -115,6 +115,23 @@ void refresh(void)
 	refresh_homecells();
 }
 
+void refresh_cascade_tail(size_t index, int select)
+{
+	struct cascade_t *cascade = F.cascades[index];
+	char a = c_peek(cascade);
+
+	if (cascade->size)
+	{
+		gotocc(index, cascade->size - 1);
+		cardprint(a, select);
+	}
+	if (cascade->size < MAX_CASCADE_SIZE)
+	{
+		gotocc(index, cascade->size);
+		carderase();
+	}
+}
+
 void refresh_freecells(void)
 {
 	size_t i;
@@ -149,7 +166,7 @@ void refresh_homecells(void)
 
 void init(void)
 {
-	char i;
+	size_t i;
 
 	directvideo = 0;
 	textmode(C80);
@@ -158,18 +175,16 @@ void init(void)
 		F.cascades[i] = cascade_new(MAX_CASCADE_SIZE);
 
 	F.freecells = cascade_new(MAX_FREECELLS);
-
-	for (i = 0; i < NUM_SUITS * 2; i++)
-		F.homecells[i] = NUM_CARDS;
 }
 
-#define DEBUG 1
+#define DEBUG 0
 int main(void)
 {
 	enum selection_types selection = SELECT_NONE;
 	size_t srci, i, key;
 
 	init();
+
 #if DEBUG
 	for (i = 12; i >= 8; i--)
 		c_push(F.cascades[0], getcard(i, i % 2 << 1));
@@ -177,6 +192,7 @@ int main(void)
 #else
 	newgame(&F, DOUBLE_DECK);
 #endif
+
 	refresh();
 	do
 	{
@@ -194,7 +210,7 @@ int main(void)
 			if (confirm_yn("Start a new game?"))
 			{
 				selection = SELECT_NONE;
-				newgame();
+				newgame(&F, DOUBLE_DECK);
 				refresh();
 			}
 			break;
@@ -206,27 +222,31 @@ int main(void)
 				/* cannot select empty freecells */
 				if (F.freecells->size)
 				{
-					selection = SELECT_FREECELL;
 					srci = F.freecells->size - 1;
 					goto_freecell(srci);
-					cardprint(freecells->cards[srci], 1);
+					cardprint(F.freecells->cards[srci], 1);
+					selection = SELECT_FREECELL;
 				}
 				break;
 			case SELECT_FREECELL:
 				goto_freecell(srci);
-				cardprint(freecells->cards[srci], 0);
+				cardprint(F.freecells->cards[srci], 0);
 				if (srci)
 				{
 					srci--;
 					goto_freecell(srci);
-					cardprint(freecells->cards[srci], 1);
+					cardprint(F.freecells->cards[srci], 1);
 				}
 				else
 					selection = SELECT_NONE;
 				break;
 			case SELECT_CASCADE:
-				if (cascade_to_freecell(srci))
+				if (cascade_to_freecell(&F, srci))
+				{
+					refresh_cascade_tail(srci, 0);
+					refresh_freecells();
 					selection = SELECT_NONE;
+				}
 				break;
 			}
 			break;
@@ -238,44 +258,49 @@ int main(void)
 				/* cannot select the homecells */
 				break;
 			case SELECT_FREECELL:
-				if (to_homecell(srci, SELECT_FREECELL))
+				if (to_homecell(&F, srci, SELECT_FREECELL))
 					selection = SELECT_NONE;
 				break;
 			case SELECT_CASCADE:
-				if (to_homecell(srci, SELECT_CASCADE))
+				if (to_homecell(&F, srci, SELECT_CASCADE))
 					selection = SELECT_NONE;
 				break;
 			}
 			break;
 		default:
 			i = key - '0';
-			if (i >= 0 && i < NUM_CASCADES)
+			if (i >= 0 && i < F.num_cascades)
 			{
 				switch (selection)
 				{
 				case SELECT_NONE:
 					/* cannot select empty cascade */
-					if (cascades[i]->size)
+					if (F.cascades[srci = i]->size)
 					{
+						refresh_cascade_tail(srci, 1);
 						selection = SELECT_CASCADE;
-						srci = i;
-						gotocc(srci, cascades[srci]->size - 1);
-						cardprint(c_peek(cascades[srci]), 1);
 					}
 					break;
 				case SELECT_FREECELL:
-					if (freecell_to_cascade(srci, i))
+					if (freecell_to_cascade(&F, srci, i))
+					{
+						refresh_freecells();
+						refresh_cascade_tail(i, 0);
 						selection = SELECT_NONE;
+					}
 					break;
 				case SELECT_CASCADE:
 					if (i == srci)
 					{
-						gotocc(srci, cascades[srci]->size - 1);
-						cardprint(c_peek(cascades[srci]), 0);
+						refresh_cascade_tail(srci, 0);
 						selection = SELECT_NONE;
 					}
-					else if (cascade_to_cascade_m(srci, i, 80))
+					else if (cascade_to_cascade(&F, srci, i))
+					{
+						refresh_cascade_tail(srci, 0);
+						refresh_cascade_tail(i, 0);
 						selection = SELECT_NONE;
+					}
 					break;
 				}
 			}
