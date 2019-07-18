@@ -3,10 +3,9 @@
 #include <time.h>
 
 #include "conio.h"
-#include "card.h"
 #include "dos.h"
-#include "cascade.h"
 #include "freecell.h"
+#include "main.h" /* TODO remove this after fixing to_homecell() */
 
 void deal(struct freecell_t *f)
 {
@@ -90,6 +89,29 @@ int cascade_to_freecell(struct freecell_t *f, size_t srci)
 
 	if (valid)
 		c_push(dst, c_pop(src));
+
+	return valid;
+}
+
+int cascade_to_homecell(struct freecell_t *f, size_t srci)
+{
+	struct cascade_t *src = f->cascades[srci];
+	char a = c_peek(src), b;
+	size_t i, dsti;
+	int valid;
+
+	for (i = 0; i < f->num_decks; i++)
+	{
+		dsti = getsuit(a) * f->num_decks + i;
+		b = f->homecells[dsti];
+		valid = (getrank(a) == 0 && b == NUM_CARDS) ||
+				(getrank(a) - getrank(b) == 1);
+		if (valid)
+		{
+			f->homecells[dsti] = c_pop(src);
+			break;
+		}
+	}
 
 	return valid;
 }

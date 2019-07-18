@@ -13,6 +13,7 @@ static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
 				  BORDER_L_R[] = {186, 32, 32, 32, 32, 32, 32, 186, 0};
 
 static struct freecell_t F;
+static struct transfer_t T;
 
 int confirm_yn(const char *message)
 {
@@ -84,7 +85,7 @@ void pretty_borders(int x, int y)
 
 void refresh(void)
 {
-	char i, j;
+	size_t i, j;
 	/* clear the screen */
 	textcolor(BLACK);
 	textbackground(BLACK);
@@ -180,7 +181,7 @@ void init(void)
 #define DEBUG 0
 int main(void)
 {
-	enum selection_types selection = SELECT_NONE;
+	enum selection_types selection = S_NONE;
 	size_t srci, i, key;
 
 	init();
@@ -209,8 +210,8 @@ int main(void)
 		case 'N':
 			if (confirm_yn("Start a new game?"))
 			{
-				selection = SELECT_NONE;
-				newgame(&F, DOUBLE_DECK);
+				selection = S_NONE;
+				newgame(&F, SINGLE_DECK);
 				refresh();
 			}
 			break;
@@ -218,17 +219,17 @@ int main(void)
 		case 'A':
 			switch (selection)
 			{
-			case SELECT_NONE:
+			case S_NONE:
 				/* cannot select empty freecells */
 				if (F.freecells->size)
 				{
 					srci = F.freecells->size - 1;
 					goto_freecell(srci);
 					cardprint(F.freecells->cards[srci], 1);
-					selection = SELECT_FREECELL;
+					selection = S_FREECELL;
 				}
 				break;
-			case SELECT_FREECELL:
+			case S_FREECELL:
 				goto_freecell(srci);
 				cardprint(F.freecells->cards[srci], 0);
 				if (srci)
@@ -238,14 +239,14 @@ int main(void)
 					cardprint(F.freecells->cards[srci], 1);
 				}
 				else
-					selection = SELECT_NONE;
+					selection = S_NONE;
 				break;
-			case SELECT_CASCADE:
+			case S_CASCADE:
 				if (cascade_to_freecell(&F, srci))
 				{
 					refresh_cascade_tail(srci, 0);
 					refresh_freecells();
-					selection = SELECT_NONE;
+					selection = S_NONE;
 				}
 				break;
 			}
@@ -254,16 +255,16 @@ int main(void)
 		case 'B':
 			switch (selection)
 			{
-			case SELECT_NONE:
+			case S_NONE:
 				/* cannot select the homecells */
 				break;
-			case SELECT_FREECELL:
-				if (to_homecell(&F, srci, SELECT_FREECELL))
-					selection = SELECT_NONE;
+			case S_FREECELL:
+				if (to_homecell(&F, srci, S_FREECELL))
+					selection = S_NONE;
 				break;
-			case SELECT_CASCADE:
-				if (to_homecell(&F, srci, SELECT_CASCADE))
-					selection = SELECT_NONE;
+			case S_CASCADE:
+				if (to_homecell(&F, srci, S_CASCADE))
+					selection = S_NONE;
 				break;
 			}
 			break;
@@ -273,33 +274,33 @@ int main(void)
 			{
 				switch (selection)
 				{
-				case SELECT_NONE:
+				case S_NONE:
 					/* cannot select empty cascade */
 					if (F.cascades[srci = i]->size)
 					{
 						refresh_cascade_tail(srci, 1);
-						selection = SELECT_CASCADE;
+						selection = S_CASCADE;
 					}
 					break;
-				case SELECT_FREECELL:
+				case S_FREECELL:
 					if (freecell_to_cascade(&F, srci, i))
 					{
 						refresh_freecells();
 						refresh_cascade_tail(i, 0);
-						selection = SELECT_NONE;
+						selection = S_NONE;
 					}
 					break;
-				case SELECT_CASCADE:
+				case S_CASCADE:
 					if (i == srci)
 					{
 						refresh_cascade_tail(srci, 0);
-						selection = SELECT_NONE;
+						selection = S_NONE;
 					}
 					else if (cascade_to_cascade(&F, srci, i))
 					{
 						refresh_cascade_tail(srci, 0);
 						refresh_cascade_tail(i, 0);
-						selection = SELECT_NONE;
+						selection = S_NONE;
 					}
 					break;
 				}
@@ -312,5 +313,6 @@ RET:
 	textbackground(BLACK);
 	textcolor(LIGHTGRAY);
 	clrscr();
+	textmode(LASTMODE);
 	return EXIT_SUCCESS;
 }
