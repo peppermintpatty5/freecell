@@ -13,18 +13,18 @@
 #define MAX_CASCADES (10)
 #define MAX_FREECELLS (8)
 
+enum game_types
+{
+	SINGLE_DECK,
+	DOUBLE_DECK
+};
+
 enum selection_types
 {
 	S_NONE,
 	S_CASCADE,
 	S_FREECELL,
-	S_HOMECELL,
-};
-
-enum game_types
-{
-	SINGLE_DECK,
-	DOUBLE_DECK
+	S_HOMECELL
 };
 
 /**
@@ -41,9 +41,6 @@ struct freecell_t
 	char homecells[NUM_SUITS * MAX_DECKS];
 };
 
-/**
- * Contains the data for a card transfer from 
- */
 struct transfer_t
 {
 	size_t srci;
@@ -53,12 +50,18 @@ struct transfer_t
 };
 
 /**
- * Clears the cascades and deals 'f->num_decks' shuffled decks.
+ * Struct members that are pointers must be initialized before use.
  */
-void deal(struct freecell_t *f);
+void f_init(struct freecell_t *f);
 
-void newgame(struct freecell_t *f, enum game_types gt);
+/**
+ * Deals a new FreeCell game according to presets specified by the game type.
+ */
+void f_newgame(struct freecell_t *f, enum game_types gt);
 
+/**
+ * Performs a transfer on 'f' as specified by 't'.
+ */
 int f_transfer(struct freecell_t *f, struct transfer_t *t);
 
 /**
@@ -77,6 +80,6 @@ int freecell_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
 /**
  * Attemps to move card from a freecell or cascade to the homecells.
  */
-int to_homecell(struct freecell_t *f, int srci, enum Sion_types sel);
+int to_homecell(struct freecell_t *f, int srci, enum selection_types sel);
 
 #endif

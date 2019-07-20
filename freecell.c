@@ -7,7 +7,20 @@
 #include "freecell.h"
 #include "main.h" /* TODO remove this after fixing to_homecell() */
 
-void deal(struct freecell_t *f)
+void f_init(struct freecell_t *f)
+{
+	size_t i;
+
+	for (i = 0; i < 10; i++)
+		f->cascades[i] = cascade_new(MAX_CASCADE_SIZE);
+
+	f->freecells = cascade_new(MAX_FREECELLS);
+}
+
+/**
+ * Clears the cascades and deals 'f->num_decks' shuffled decks.
+ */
+static void deal(struct freecell_t *f)
 {
 	size_t i, j, r, j_ = 0;
 	char deck[NUM_CARDS], c;
@@ -33,7 +46,7 @@ void deal(struct freecell_t *f)
 	}
 }
 
-void newgame(struct freecell_t *f, enum game_types gt)
+void f_newgame(struct freecell_t *f, enum game_types gt)
 {
 	size_t i;
 
@@ -61,6 +74,42 @@ void newgame(struct freecell_t *f, enum game_types gt)
 
 	srand(time(NULL));
 	deal(f);
+}
+
+int f_transfer(struct freecell_t *f, struct transfer_t *t)
+{
+	int valid = 0;
+
+	switch (t->srcsel)
+	{
+	case S_CASCADE:
+		switch (t->dstsel)
+		{
+		case S_CASCADE:
+			valid = cascade_to_cascade(f, t->srci, t->dsti);
+			break;
+		case S_FREECELL:
+			valid = cascade_to_freecell(f, t->srci);
+			break;
+		case S_HOMECELL:
+			valid = to_homecell(f, t->srci, t->srcsel);
+			break;
+		}
+		break;
+	case S_FREECELL:
+		switch (t->dstsel)
+		{
+		case S_CASCADE:
+			valid = freecell_to_cascade(f, t->srci, t->dsti);
+			break;
+		case S_HOMECELL:
+			valid = to_homecell(f, t->srci, t->srcsel);
+			break;
+		}
+		break;
+	}
+
+	return valid;
 }
 
 int can_stack(char a, char b)
@@ -134,7 +183,7 @@ int to_homecell(struct freecell_t *f, int srci, enum selection_types sel)
 	int valid;
 	size_t i, dsti;
 
-	a = sel == SELECT_FREECELL
+	a = sel == S_FREECELL
 			? f->freecells->cards[srci]
 			: c_peek(f->cascades[srci]);
 
@@ -148,13 +197,13 @@ int to_homecell(struct freecell_t *f, int srci, enum selection_types sel)
 		{
 			switch (sel)
 			{
-			case SELECT_FREECELL:
+			case S_FREECELL:
 				f->homecells[dsti] = c_rm(f->freecells, srci);
 				refresh_freecells();
 				break;
-			case SELECT_CASCADE:
+			case S_CASCADE:
 				f->homecells[dsti] = c_pop(f->cascades[srci]);
-				gotocc(srci, f->cascades[srci]->size);
+				goto_cascade(srci, f->cascades[srci]->size);
 				carderase();
 				break;
 			}

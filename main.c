@@ -47,22 +47,52 @@ int confirm_yn(const char *message)
 	return status;
 }
 
-void goto_freecell(int index)
+/**
+ * Send the cursor to a card within a cascade.
+ */
+void goto_cascade(int cascadei, int cardi)
 {
-	gotoxy(3, 3 + 2 * index);
+	switch (F.num_decks)
+	{
+	case 1:
+		gotoxy(6 * cascadei + 17, cardi + 3);
+		break;
+	case 2:
+		gotoxy(6 * cascadei + 11, cardi + 3);
+		break;
+	}
 }
 
-void goto_homecell(int index)
+/**
+ * Move the cursor to the nth freecell.
+ */
+static void goto_freecell(int index)
 {
-	gotoxy(73, 3 + 2 * index);
+	switch (F.num_decks)
+	{
+	case 1:
+		gotoxy(3, 4 * index + 4);
+		break;
+	case 2:
+		gotoxy(3, 2 * index + 3);
+		break;
+	}
 }
 
-void gotocc(char cascadei, char cardi)
+static void goto_homecell(int index)
 {
-	gotoxy(cascadei * 6 + 11, cardi + 3);
+	switch (F.num_decks)
+	{
+	case 1:
+		gotoxy(73, 4 * index + 4);
+		break;
+	case 2:
+		gotoxy(73, 2 * index + 3);
+		break;
+	}
 }
 
-void pretty_borders(int x, int y)
+static void pretty_borders(int x, int y)
 {
 	int i;
 
@@ -100,7 +130,7 @@ void refresh(void)
 	cprintf("B");
 	for (i = 0; i < F.num_cascades; i++)
 	{
-		gotocc(i, -2);
+		goto_cascade(i, -2);
 		cprintf("  %d", i);
 	}
 	/* print the cascades */
@@ -108,7 +138,7 @@ void refresh(void)
 	{
 		for (j = 0; j < F.cascades[i]->size; j++)
 		{
-			gotocc(i, j);
+			goto_cascade(i, j);
 			cardprint(F.cascades[i]->cards[j], 0);
 		}
 	}
@@ -123,12 +153,12 @@ void refresh_cascade_tail(size_t index, int select)
 
 	if (cascade->size)
 	{
-		gotocc(index, cascade->size - 1);
+		goto_cascade(index, cascade->size - 1);
 		cardprint(a, select);
 	}
 	if (cascade->size < MAX_CASCADE_SIZE)
 	{
-		gotocc(index, cascade->size);
+		goto_cascade(index, cascade->size);
 		carderase();
 	}
 }
@@ -165,24 +195,25 @@ void refresh_homecells(void)
 	}
 }
 
+/**
+ * Only re-print the areas of the screen which are necessary.
+ */
+static void quick_refresh()
+{
+}
+
 void init(void)
 {
-	size_t i;
-
 	directvideo = 0;
 	textmode(C80);
 
-	for (i = 0; i < 10; i++)
-		F.cascades[i] = cascade_new(MAX_CASCADE_SIZE);
-
-	F.freecells = cascade_new(MAX_FREECELLS);
+	f_init(&F);
 }
 
 #define DEBUG 0
 int main(void)
 {
-	enum selection_types selection = S_NONE;
-	size_t srci, i, key;
+	int key;
 
 	init();
 
@@ -191,7 +222,8 @@ int main(void)
 		c_push(F.cascades[0], getcard(i, i % 2 << 1));
 	c_push(F.cascades[1], getcard(12, 0));
 #else
-	newgame(&F, DOUBLE_DECK);
+	T.srci = T.dsti = S_NONE;
+	f_newgame(&F, DOUBLE_DECK);
 #endif
 
 	refresh();
@@ -210,97 +242,97 @@ int main(void)
 		case 'N':
 			if (confirm_yn("Start a new game?"))
 			{
-				selection = S_NONE;
-				newgame(&F, SINGLE_DECK);
+				T.srci = T.dsti = S_NONE;
+				f_newgame(&F, SINGLE_DECK);
 				refresh();
 			}
 			break;
 		case 'a':
 		case 'A':
-			switch (selection)
+			switch (T.srcsel)
 			{
 			case S_NONE:
 				/* cannot select empty freecells */
 				if (F.freecells->size)
 				{
-					srci = F.freecells->size - 1;
-					goto_freecell(srci);
-					cardprint(F.freecells->cards[srci], 1);
-					selection = S_FREECELL;
+					T.srci = F.freecells->size - 1;
+					goto_freecell(T.srci);
+					cardprint(F.freecells->cards[T.srci], 1);
+					T.srcsel = S_FREECELL;
 				}
 				break;
 			case S_FREECELL:
-				goto_freecell(srci);
-				cardprint(F.freecells->cards[srci], 0);
-				if (srci)
+				goto_freecell(T.srci);
+				cardprint(F.freecells->cards[T.srci], 0);
+				if (T.srci)
 				{
-					srci--;
-					goto_freecell(srci);
-					cardprint(F.freecells->cards[srci], 1);
+					T.srci--;
+					goto_freecell(T.srci);
+					cardprint(F.freecells->cards[T.srci], 1);
 				}
 				else
-					selection = S_NONE;
+					T.srcsel = S_NONE;
 				break;
 			case S_CASCADE:
-				if (cascade_to_freecell(&F, srci))
+				if (cascade_to_freecell(&F, T.srci))
 				{
-					refresh_cascade_tail(srci, 0);
+					refresh_cascade_tail(T.srci, 0);
 					refresh_freecells();
-					selection = S_NONE;
+					T.srcsel = S_NONE;
 				}
 				break;
 			}
 			break;
 		case 'b':
 		case 'B':
-			switch (selection)
+			switch (T.srcsel)
 			{
 			case S_NONE:
 				/* cannot select the homecells */
 				break;
 			case S_FREECELL:
-				if (to_homecell(&F, srci, S_FREECELL))
-					selection = S_NONE;
+				if (to_homecell(&F, T.srci, S_FREECELL))
+					T.srcsel = S_NONE;
 				break;
 			case S_CASCADE:
-				if (to_homecell(&F, srci, S_CASCADE))
-					selection = S_NONE;
+				if (to_homecell(&F, T.srci, S_CASCADE))
+					T.srcsel = S_NONE;
 				break;
 			}
 			break;
 		default:
-			i = key - '0';
-			if (i >= 0 && i < F.num_cascades)
+			key -= '0';
+			if (key >= 0 && key < F.num_cascades)
 			{
-				switch (selection)
+				switch (T.srcsel)
 				{
 				case S_NONE:
 					/* cannot select empty cascade */
-					if (F.cascades[srci = i]->size)
+					if (F.cascades[T.srci = key]->size)
 					{
-						refresh_cascade_tail(srci, 1);
-						selection = S_CASCADE;
+						refresh_cascade_tail(T.srci, 1);
+						T.srcsel = S_CASCADE;
 					}
 					break;
 				case S_FREECELL:
-					if (freecell_to_cascade(&F, srci, i))
+					if (freecell_to_cascade(&F, T.srci, key))
 					{
 						refresh_freecells();
-						refresh_cascade_tail(i, 0);
-						selection = S_NONE;
+						refresh_cascade_tail(key, 0);
+						T.srcsel = S_NONE;
 					}
 					break;
 				case S_CASCADE:
-					if (i == srci)
+					if (key == T.srci)
 					{
-						refresh_cascade_tail(srci, 0);
-						selection = S_NONE;
+						refresh_cascade_tail(T.srci, 0);
+						T.srcsel = S_NONE;
 					}
-					else if (cascade_to_cascade(&F, srci, i))
+					else if (cascade_to_cascade(&F, T.srci, key))
 					{
-						refresh_cascade_tail(srci, 0);
-						refresh_cascade_tail(i, 0);
-						selection = S_NONE;
+						refresh_cascade_tail(T.srci, 0);
+						refresh_cascade_tail(key, 0);
+						T.srcsel = S_NONE;
 					}
 					break;
 				}

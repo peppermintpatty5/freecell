@@ -10,14 +10,7 @@
  */
 int confirm_yn(const char *message);
 
-/**
- * Move the cursor to the nth freecell.
- */
-void goto_freecell(int index);
-
-void gotocc(char cascadei, char cardi);
-
-void pretty_borders(int x, int y);
+void goto_cascade(int, int);
 
 void refresh(void);
 
