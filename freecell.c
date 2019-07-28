@@ -3,207 +3,138 @@
 #include <time.h>
 
 #include "conio.h"
-#include "card.h"
-#include "cascade.h"
+#include "dos.h"
 #include "freecell.h"
+#include "main.h" /* TODO remove this after fixing to_homecell() */
 
-static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
-				  BORDER_MID[] = {199, 196, 196, 196, 196, 196, 196, 182, 0},
-				  BORDER_BOT[] = {200, 205, 205, 205, 205, 205, 205, 188, 0},
-				  BORDER_L_R[] = {186, 32, 32, 32, 32, 32, 32, 186, 0};
-
-static struct cascade_t *cascades[NUM_CASCADES];
-static struct cascade_t *freecells;
-static char homecells[NUM_HOMECELLS];
-
-void hidecursor(void)
+void f_init(struct freecell_t *f)
 {
-	gotoxy(1, 1);
-}
+	size_t i;
 
-int confirm_yn(char *message)
-{
-	signed int status = -1;
-	gotoxy(1, 25);
-	textcolor(LIGHTGREEN);
-	textbackground(BLACK);
-	cprintf("%s (Y/N)", message);
-	hidecursor();
+	for (i = 0; i < 10; i++)
+		f->cascades[i] = cascade_new(MAX_CASCADE_SIZE);
 
-	while (status < 0)
-	{
-		switch (getch())
-		{
-		case 'y':
-		case 'Y':
-			status = 1;
-			break;
-		case 'n':
-		case 'N':
-			status = 0;
-			break;
-		default:
-			break;
-		}
-	}
-	gotoxy(1, 25);
-	delline();
-
-	return status;
-}
-
-void goto_freecell(int index)
-{
-	gotoxy(3, 3 + 2 * index);
-}
-
-void gotocc(char cascadei, char cardi)
-{
-	gotoxy(cascadei * 6 + 11, cardi + 3);
-}
-
-void pretty_borders(char x, char y)
-{
-	char i;
-
-	textcolor(BLUE);
-	textbackground(BLACK);
-
-	for (i = 0; i < 17; i++)
-	{
-		gotoxy(x, i + y);
-		if (i == 0)
-			cprintf(BORDER_TOP);
-		else if (i == 16)
-			cprintf(BORDER_BOT);
-		else if (i % 4 == 0)
-			cprintf(BORDER_MID);
-		else
-			cprintf(BORDER_L_R);
-	}
+	f->freecells = cascade_new(MAX_FREECELLS);
 }
 
 /**
- * TODO split up into smaller functions
+ * Clears the cascades and deals 'f->num_decks' shuffled decks.
  */
-void refresh(void)
+static void deal(struct freecell_t *f)
 {
-	char i, j;
-	/* clear the screen */
-	textcolor(BLACK);
-	textbackground(BLACK);
-	clrscr();
-	pretty_borders(2, 2);
-	pretty_borders(72, 2);
-	/* numbers on the top of the screen */
-	textcolor(LIGHTGRAY);
-	gotoxy(5, 1);
-	cprintf("A");
-	gotoxy(75, 1);
-	cprintf("B");
-	for (i = 0; i < NUM_CASCADES; i++)
-	{
-		gotocc(i, -2);
-		cprintf("  %d", i);
-	}
-	/* print the cascades */
-	for (i = 0; i < NUM_CASCADES; i++)
-	{
-		for (j = 0; j < cascades[i]->size; j++)
-		{
-			gotocc(i, j);
-			cardprint(cascades[i]->cards[j], 0);
-		}
-	}
-	refresh_freecells();
-	refresh_homecells();
-}
-
-void refresh_freecells(void)
-{
-	char i;
-
-	for (i = 0; i < NUM_FREECELLS; i++)
-	{
-		goto_freecell(i);
-		if (i < freecells->size)
-			cardprint(freecells->cards[i], 0);
-		else
-			carderase();
-	}
-}
-
-void refresh_homecells(void)
-{
-	char i;
-
-	for (i = 0; i < NUM_HOMECELLS; i++)
-	{
-		gotoxy(73, 3 + 2 * i);
-		if (homecells[i] == NUM_CARDS)
-		{
-			textcolor(DARKGRAY);
-			textbackground(BLACK);
-			cprintf(" %c", i / NUM_DECKS + '\3');
-		}
-		else
-			cardprint(homecells[i], 0);
-	}
-}
-
-void deal(unsigned int n)
-{
-	unsigned int i, j, t, i_ = 0;
-	char deck[NUM_CARDS];
+	size_t i, j, r, j_ = 0;
+	char deck[NUM_CARDS], c;
 
 	for (i = 0; i < NUM_CARDS; i++)
-		deck[51 - i] = i;
-	while (n-- > 0)
+		deck[i] = i;
+
+	for (i = 0; i < f->num_decks; i++)
 	{
 		/* shuffle */
-		for (i = NUM_CARDS - 1; i > 0; i--)
+		for (j = NUM_CARDS - 1; j > 0; j--)
 		{
-			j = rand() % i;
-			t = deck[i];
-			deck[i] = deck[j];
-			deck[j] = t;
+			r = rand() % j;
+			c = deck[r];
+			deck[r] = deck[j];
+			deck[j] = c;
 		}
 		/* deal */
-		for (i = 0; i < NUM_CARDS; i++)
-			c_push(cascades[(i + i_) % NUM_CASCADES], deck[i]);
-		i_ = i % NUM_CASCADES;
+		for (j = 0; j < NUM_CARDS; j++)
+			c_push(f->cascades[(j + j_) % f->num_cascades], deck[j]);
+		/* remember where the last card was dealt */
+		j_ = (j + j_) % f->num_cascades;
 	}
 }
 
-void newgame(void)
+void f_newgame(struct freecell_t *f, enum game_types gt)
 {
-	char i;
-	/* clear and deal cascades */
-	for (i = 0; i < NUM_CASCADES; i++)
-		c_clr(cascades[i]);
+	size_t i;
+
+	switch (gt)
+	{
+	case SINGLE_DECK:
+		f->num_decks = 1;
+		f->num_cascades = 8;
+		f->num_freecells = 4;
+		break;
+	case DOUBLE_DECK:
+		f->num_decks = 2;
+		f->num_cascades = 10;
+		f->num_freecells = 8;
+		break;
+	}
+
+	for (i = 0; i < f->num_cascades; i++)
+		c_clr(f->cascades[i]);
+
+	c_clr(f->freecells);
+
+	for (i = 0; i < NUM_SUITS * f->num_decks; i++)
+		f->homecells[i] = NUM_CARDS;
+
 	srand(time(NULL));
-	deal(NUM_DECKS);
-	/* clear freecells */
-	c_clr(freecells);
-	/* clear homecells */
-	for (i = 0; i < NUM_HOMECELLS; i++)
-		homecells[i] = NUM_CARDS;
+	deal(f);
 }
 
-int cascade_to_cascade(char srci, char dsti)
+int f_transfer(struct freecell_t *f, struct transfer_t *t)
 {
-	struct cascade_t *src = cascades[srci],
-					 *dst = cascades[dsti];
-	char valid = dst->size == 0 ||
-				 can_stack(c_peek(src), c_peek(dst));
+	size_t i;
+	char a, *b;
+	int valid;
+	struct cascade_t *dst;
+
+	switch (t->srcsel)
+	{
+	case S_CASCADE:
+		a = c_peek(f->cascades[t->srci]);
+		break;
+	case S_FREECELL:
+		a = f->freecells->cards[t->srci];
+		break;
+	default:
+		return 0;
+	}
+
+	switch (t->dstsel)
+	{
+	case S_CASCADE:
+		dst = f->cascades[t->dsti];
+		if (valid = !dst->size || can_stack(a, c_peek(dst)))
+			c_push(dst, a);
+		break;
+	case S_FREECELL:
+		dst = f->freecells;
+		if (valid = dst->size < f->num_freecells)
+			c_push(dst, a);
+		break;
+	case S_HOMECELL:
+		for (i = 0; i < f->num_decks; i++)
+		{
+			b = &f->homecells[getsuit(a) * f->num_decks + i];
+			valid = (getrank(a) == 0 && *b == NUM_CARDS) ||
+					(getrank(a) - getrank(*b) == 1);
+			if (valid)
+			{
+				*b = a; /* hehehe */
+				break;
+			}
+		}
+		break;
+	default:
+		return 0;
+	}
 
 	if (valid)
 	{
-		gotocc(srci, src->size - 1);
-		carderase();
-		c_push(dst, c_pop(src));
-		gotocc(dsti, dst->size - 1);
-		cardprint(c_peek(dst), 0);
+		switch (t->srcsel)
+		{
+		case S_CASCADE:
+			c_pop(f->cascades[t->srci]);
+			break;
+		case S_FREECELL:
+			c_rm(f->freecells, t->srci);
+			break;
+		}
 	}
 
 	return valid;
@@ -215,204 +146,99 @@ int can_stack(char a, char b)
 		   isblack(a) != isblack(b);
 }
 
-int freecell_to_cascade(char srci, char dsti)
+int cascade_to_cascade(struct freecell_t *f, size_t srci, size_t dsti)
 {
-	struct cascade_t *dst = cascades[dsti];
-	char valid = dst->size == 0 ||
-				 can_stack(freecells->cards[srci], c_peek(dst));
+	struct cascade_t *src = f->cascades[srci],
+					 *dst = f->cascades[dsti];
+	int valid = !dst->size || can_stack(c_peek(src), c_peek(dst));
 
 	if (valid)
-	{
-		c_push(dst, c_rm(freecells, srci));
-		gotocc(dsti, dst->size - 1);
-		cardprint(c_peek(dst), 0);
-		refresh_freecells();
-	}
+		c_push(dst, c_pop(src));
 
 	return valid;
 }
 
-int cascade_to_freecell(char srci)
+int cascade_to_freecell(struct freecell_t *f, size_t srci)
 {
-	struct cascade_t *src = cascades[srci];
-	char valid = freecells->size < NUM_FREECELLS;
+	struct cascade_t *src = f->cascades[srci],
+					 *dst = f->freecells;
+	int valid = dst->size < f->num_freecells;
 
 	if (valid)
-	{
-		c_push(freecells, c_pop(src));
-		gotocc(srci, src->size);
-		carderase();
-		refresh_freecells();
-	}
+		c_push(dst, c_pop(src));
 
 	return valid;
 }
 
-int to_homecell(char srci, enum selection_types selection)
+int cascade_to_homecell(struct freecell_t *f, size_t srci)
 {
-	char a, b, valid = 0, i, dsti;
+	struct cascade_t *src = f->cascades[srci];
+	char a = c_peek(src), b;
+	size_t i, dsti;
+	int valid;
 
-	a = selection == SELECT_FREECELL
-			? freecells->cards[srci]
-			: c_peek(cascades[srci]);
-
-	for (i = 0; i < NUM_DECKS; i++)
+	for (i = 0; i < f->num_decks; i++)
 	{
-		dsti = getsuit(a) * NUM_DECKS + i;
-		b = homecells[dsti];
+		dsti = getsuit(a) * f->num_decks + i;
+		b = f->homecells[dsti];
 		valid = (getrank(a) == 0 && b == NUM_CARDS) ||
 				(getrank(a) - getrank(b) == 1);
 		if (valid)
 		{
-			switch (selection)
+			f->homecells[dsti] = c_pop(src);
+			break;
+		}
+	}
+
+	return valid;
+}
+
+int freecell_to_cascade(struct freecell_t *f, size_t srci, size_t dsti)
+{
+	struct cascade_t *src = f->freecells,
+					 *dst = f->cascades[dsti];
+	int valid = !dst->size || can_stack(src->cards[srci], c_peek(dst));
+
+	if (valid)
+		c_push(dst, c_rm(src, srci));
+
+	return valid;
+}
+
+int to_homecell(struct freecell_t *f, int srci, enum selection_types sel)
+{
+	char a, b;
+	int valid;
+	size_t i, dsti;
+
+	a = sel == S_FREECELL
+			? f->freecells->cards[srci]
+			: c_peek(f->cascades[srci]);
+
+	for (i = 0; i < f->num_decks; i++)
+	{
+		dsti = getsuit(a) * f->num_decks + i;
+		b = f->homecells[dsti];
+		valid = (getrank(a) == 0 && b == NUM_CARDS) ||
+				(getrank(a) - getrank(b) == 1);
+		if (valid)
+		{
+			switch (sel)
 			{
-			case SELECT_FREECELL:
-				homecells[dsti] = c_rm(freecells, srci);
+			case S_FREECELL:
+				f->homecells[dsti] = c_rm(f->freecells, srci);
 				refresh_freecells();
 				break;
-			case SELECT_CASCADE:
-				homecells[dsti] = c_pop(cascades[srci]);
-				gotocc(srci, cascades[srci]->size);
+			case S_CASCADE:
+				f->homecells[dsti] = c_pop(f->cascades[srci]);
+				goto_cascade(srci, f->cascades[srci]->size);
 				carderase();
 				break;
 			}
 			refresh_homecells();
-			return 1;
+			break;
 		}
 	}
 
-	return 0;
-}
-
-void init(void)
-{
-	char i;
-
-	directvideo = 0;
-	textmode(C80);
-
-	for (i = 0; i < NUM_CASCADES; i++)
-		cascades[i] = cascade_new(MAX_CASCADE_SIZE);
-	freecells = cascade_new(NUM_FREECELLS);
-}
-
-int main(void)
-{
-	enum selection_types selection = SELECT_NONE;
-	signed int srci, i, key;
-
-	init();
-	newgame();
-	refresh();
-
-	do
-	{
-		hidecursor();
-		key = getch();
-		switch (key)
-		{
-		case 'q':
-		case 'Q':
-			if (confirm_yn("Quit game?"))
-				goto RET;
-			break;
-		case 'n':
-		case 'N':
-			if (confirm_yn("Start a new game?"))
-			{
-				selection = SELECT_NONE;
-				newgame();
-				refresh();
-			}
-			break;
-		case 'a':
-		case 'A':
-			switch (selection)
-			{
-			case SELECT_NONE:
-				/* cannot select empty freecells */
-				if (freecells->size)
-				{
-					selection = SELECT_FREECELL;
-					srci = freecells->size - 1;
-					goto_freecell(srci);
-					cardprint(freecells->cards[srci], 1);
-				}
-				break;
-			case SELECT_FREECELL:
-				goto_freecell(srci);
-				cardprint(freecells->cards[srci], 0);
-				srci--;
-				if (srci < 0)
-					selection = SELECT_NONE;
-				else
-				{
-					goto_freecell(srci);
-					cardprint(freecells->cards[srci], 1);
-				}
-				break;
-			case SELECT_CASCADE:
-				if (cascade_to_freecell(srci))
-					selection = SELECT_NONE;
-				break;
-			}
-			break;
-		case 'b':
-		case 'B':
-			switch (selection)
-			{
-			case SELECT_NONE:
-				/* cannot select the homecells */
-				break;
-			case SELECT_FREECELL:
-				if (to_homecell(srci, SELECT_FREECELL))
-					selection = SELECT_NONE;
-				break;
-			case SELECT_CASCADE:
-				if (to_homecell(srci, SELECT_CASCADE))
-					selection = SELECT_NONE;
-				break;
-			}
-			break;
-		default:
-			i = key - '0';
-			if (i >= 0 && i < NUM_CASCADES)
-			{
-				switch (selection)
-				{
-				case SELECT_NONE:
-					/* cannot select empty cascade */
-					if (cascades[i]->size)
-					{
-						selection = SELECT_CASCADE;
-						srci = i;
-						gotocc(srci, cascades[srci]->size - 1);
-						cardprint(c_peek(cascades[srci]), 1);
-					}
-					break;
-				case SELECT_FREECELL:
-					if (freecell_to_cascade(srci, i))
-						selection = SELECT_NONE;
-					break;
-				case SELECT_CASCADE:
-					if (i == srci)
-					{
-						gotocc(srci, cascades[srci]->size - 1);
-						cardprint(c_peek(cascades[srci]), 0);
-						selection = SELECT_NONE;
-					}
-					else if (cascade_to_cascade(srci, i))
-						selection = SELECT_NONE;
-					break;
-				}
-			}
-			break;
-		}
-	} while (1);
-
-RET:
-	textbackground(BLACK);
-	textcolor(LIGHTGRAY);
-	clrscr();
-	return EXIT_SUCCESS;
+	return valid;
 }

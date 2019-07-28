@@ -1,79 +1,84 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
-#define NUM_DECKS (2)
-#define NUM_CASCADES (10)
-#define NUM_FREECELLS (8)
-#define NUM_HOMECELLS (8)
-#define MAX_CASCADE_SIZE (24)
+#include "card.h"
+#include "cascade.h"
+
+/**
+ * A limitation of the 80x25 textmode, which is also the highest possible stack
+ * in a double deck FreeCell game.
+ */
+#define MAX_CASCADE_SIZE (23)
+#define MAX_DECKS (2)
+#define MAX_CASCADES (10)
+#define MAX_FREECELLS (8)
+
+enum game_types
+{
+	SINGLE_DECK,
+	DOUBLE_DECK
+};
 
 enum selection_types
 {
-    SELECT_NONE,
-    SELECT_FREECELL,
-    SELECT_CASCADE
+	S_NONE,
+	S_CASCADE,
+	S_FREECELL,
+	S_HOMECELL
 };
 
-void hidecursor(void);
-
 /**
- * Displays confirmation message on bottom line of screen and waits for user to
- * type 'y' or 'n'. The line is erased once either choice has been made. Return
- * values are non-zero for 'yes' and zero for 'no'.
+ * Contains the data for a game of FreeCell. Supports both single and double
+ * deck FreeCell variations.
  */
-int confirm_yn(char *message);
+struct freecell_t
+{
+	size_t num_decks;
+	size_t num_cascades;
+	size_t num_freecells;
+	struct cascade_t *cascades[MAX_CASCADES];
+	struct cascade_t *freecells;
+	char homecells[NUM_SUITS * MAX_DECKS];
+};
+
+struct transfer_t
+{
+	size_t srci;
+	size_t dsti;
+	enum selection_types srcsel;
+	enum selection_types dstsel;
+};
 
 /**
- * Move the cursor to the nth freecell.
+ * Struct members that are pointers must be initialized before use.
  */
-void goto_freecell(int index);
-
-void gotocc(char cascadei, char cardi);
-
-void pretty_borders(char x, char y);
-
-void refresh(void);
-
-void refresh_freecells(void);
-
-void refresh_homecells(void);
+void f_init(struct freecell_t *f);
 
 /**
- * Deal n many shuffled decks to the cascades.
+ * Deals a new FreeCell game according to presets specified by the game type.
  */
-void deal(unsigned int n);
-
-void newgame(void);
+void f_newgame(struct freecell_t *f, enum game_types gt);
 
 /**
- * Attempt to transfer card from one cascade to another, according to the rules
- * of FreeCell. Returns 0 if failed, non-zero if succeeded.
- * 
- * Destination index can refer to empty cascade, while source index cannot.
- * 
- * Also performs graphical updates (hopefully).
+ * Performs a transfer on 'f' as specified by 't'.
  */
-int cascade_to_cascade(char srci, char dsti);
+int f_transfer(struct freecell_t *f, struct transfer_t *t);
 
 /**
- * Determines if card a can be stacked on top of card b.
+ * Determines if card 'a' can be stacked on top of card 'b'.
  */
 int can_stack(char a, char b);
 
-int freecell_to_cascade(char srci, char dsti);
+#if 0 /* section to be removed */
+int cascade_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
 
-int cascade_to_freecell(char srci);
+int cascade_to_freecell(struct freecell_t *f, size_t srci);
 
-/**
- * Attemps to move card from a freecell or cascade to the homecells.
- */
-int to_home(char srci, enum selection_types selection);
+int cascade_to_homecell(struct freecell_t *f, size_t srci);
 
-/**
- * Initializes static variables and sets up display. Only call once!
- */
-void init(void);
+int freecell_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
 
-int main(void);
+int to_homecell(struct freecell_t *f, int srci, enum selection_types sel);
+#endif
 
 #endif

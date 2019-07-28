@@ -27,6 +27,7 @@ void cardprint(char card, char select)
 
 void carderase(void)
 {
+	textcolor(BLACK);
 	textbackground(BLACK);
 	cprintf("     ");
 }
