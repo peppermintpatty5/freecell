@@ -78,35 +78,63 @@ void f_newgame(struct freecell_t *f, enum game_types gt)
 
 int f_transfer(struct freecell_t *f, struct transfer_t *t)
 {
-	int valid = 0;
+	size_t i;
+	char a, *b;
+	int valid;
+	struct cascade_t *dst;
 
 	switch (t->srcsel)
 	{
 	case S_CASCADE:
-		switch (t->dstsel)
-		{
-		case S_CASCADE:
-			valid = cascade_to_cascade(f, t->srci, t->dsti);
-			break;
-		case S_FREECELL:
-			valid = cascade_to_freecell(f, t->srci);
-			break;
-		case S_HOMECELL:
-			valid = to_homecell(f, t->srci, t->srcsel);
-			break;
-		}
+		a = c_peek(f->cascades[t->srci]);
 		break;
 	case S_FREECELL:
-		switch (t->dstsel)
+		a = f->freecells->cards[t->srci];
+		break;
+	default:
+		return 0;
+	}
+
+	switch (t->dstsel)
+	{
+	case S_CASCADE:
+		dst = f->cascades[t->dsti];
+		if (valid = !dst->size || can_stack(a, c_peek(dst)))
+			c_push(dst, a);
+		break;
+	case S_FREECELL:
+		dst = f->freecells;
+		if (valid = dst->size < f->num_freecells)
+			c_push(dst, a);
+		break;
+	case S_HOMECELL:
+		for (i = 0; i < f->num_decks; i++)
 		{
-		case S_CASCADE:
-			valid = freecell_to_cascade(f, t->srci, t->dsti);
-			break;
-		case S_HOMECELL:
-			valid = to_homecell(f, t->srci, t->srcsel);
-			break;
+			b = &f->homecells[getsuit(a) * f->num_decks + i];
+			valid = (getrank(a) == 0 && *b == NUM_CARDS) ||
+					(getrank(a) - getrank(*b) == 1);
+			if (valid)
+			{
+				*b = a; /* hehehe */
+				break;
+			}
 		}
 		break;
+	default:
+		return 0;
+	}
+
+	if (valid)
+	{
+		switch (t->srcsel)
+		{
+		case S_CASCADE:
+			c_pop(f->cascades[t->srci]);
+			break;
+		case S_FREECELL:
+			c_rm(f->freecells, t->srci);
+			break;
+		}
 	}
 
 	return valid;

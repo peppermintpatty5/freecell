@@ -68,12 +68,12 @@ void goto_cascade(int cascadei, int cardi)
  */
 static void goto_freecell(int index)
 {
-	switch (F.num_decks)
+	switch ((F.num_freecells + 3) / 4)
 	{
-	case 1:
+	case 1: /* [1, 4] */
 		gotoxy(3, 4 * index + 4);
 		break;
-	case 2:
+	case 2: /* [5, 8] */
 		gotoxy(3, 2 * index + 3);
 		break;
 	}
@@ -116,6 +116,7 @@ static void pretty_borders(int x, int y)
 void refresh(void)
 {
 	size_t i, j;
+	int select;
 	/* clear the screen */
 	textcolor(BLACK);
 	textbackground(BLACK);
@@ -138,8 +139,10 @@ void refresh(void)
 	{
 		for (j = 0; j < F.cascades[i]->size; j++)
 		{
+			select = T.srcsel == S_CASCADE && T.srci == i;
+
 			goto_cascade(i, j);
-			cardprint(F.cascades[i]->cards[j], 0);
+			cardprint(F.cascades[i]->cards[j], select);
 		}
 	}
 	refresh_freecells();
@@ -166,12 +169,15 @@ void refresh_cascade_tail(size_t index, int select)
 void refresh_freecells(void)
 {
 	size_t i;
+	int select;
 
 	for (i = 0; i < F.num_freecells; i++)
 	{
+		select = T.srcsel == S_FREECELL && T.srci == i;
+
 		goto_freecell(i);
 		if (i < F.freecells->size)
-			cardprint(F.freecells->cards[i], 0);
+			cardprint(F.freecells->cards[i], select);
 		else
 			carderase();
 	}
@@ -195,13 +201,6 @@ void refresh_homecells(void)
 	}
 }
 
-/**
- * Only re-print the areas of the screen which are necessary.
- */
-static void quick_refresh()
-{
-}
-
 void init(void)
 {
 	directvideo = 0;
@@ -222,7 +221,7 @@ int main(void)
 		c_push(F.cascades[0], getcard(i, i % 2 << 1));
 	c_push(F.cascades[1], getcard(12, 0));
 #else
-	T.srci = T.dsti = S_NONE;
+	T.srcsel = T.dstsel = S_NONE;
 	f_newgame(&F, DOUBLE_DECK);
 #endif
 
@@ -230,8 +229,7 @@ int main(void)
 	do
 	{
 		hidecursor;
-		key = getch();
-		switch (key)
+		switch (key = getch())
 		{
 		case 'q':
 		case 'Q':
@@ -242,7 +240,7 @@ int main(void)
 		case 'N':
 			if (confirm_yn("Start a new game?"))
 			{
-				T.srci = T.dsti = S_NONE;
+				T.srcsel = T.dstsel = S_NONE;
 				f_newgame(&F, SINGLE_DECK);
 				refresh();
 			}
@@ -256,30 +254,17 @@ int main(void)
 				if (F.freecells->size)
 				{
 					T.srci = F.freecells->size - 1;
-					goto_freecell(T.srci);
-					cardprint(F.freecells->cards[T.srci], 1);
 					T.srcsel = S_FREECELL;
 				}
 				break;
 			case S_FREECELL:
-				goto_freecell(T.srci);
-				cardprint(F.freecells->cards[T.srci], 0);
 				if (T.srci)
-				{
 					T.srci--;
-					goto_freecell(T.srci);
-					cardprint(F.freecells->cards[T.srci], 1);
-				}
 				else
 					T.srcsel = S_NONE;
 				break;
-			case S_CASCADE:
-				if (cascade_to_freecell(&F, T.srci))
-				{
-					refresh_cascade_tail(T.srci, 0);
-					refresh_freecells();
-					T.srcsel = S_NONE;
-				}
+			default:
+				T.dstsel = S_FREECELL;
 				break;
 			}
 			break;
@@ -290,13 +275,8 @@ int main(void)
 			case S_NONE:
 				/* cannot select the homecells */
 				break;
-			case S_FREECELL:
-				if (to_homecell(&F, T.srci, S_FREECELL))
-					T.srcsel = S_NONE;
-				break;
-			case S_CASCADE:
-				if (to_homecell(&F, T.srci, S_CASCADE))
-					T.srcsel = S_NONE;
+			default:
+				T.dstsel = S_HOMECELL;
 				break;
 			}
 			break;
@@ -309,36 +289,24 @@ int main(void)
 				case S_NONE:
 					/* cannot select empty cascade */
 					if (F.cascades[T.srci = key]->size)
-					{
-						refresh_cascade_tail(T.srci, 1);
 						T.srcsel = S_CASCADE;
-					}
 					break;
-				case S_FREECELL:
-					if (freecell_to_cascade(&F, T.srci, key))
-					{
-						refresh_freecells();
-						refresh_cascade_tail(key, 0);
+				default:
+					/* user deselected cascade */
+					if ((T.dsti = key) == T.srci)
 						T.srcsel = S_NONE;
-					}
-					break;
-				case S_CASCADE:
-					if (key == T.srci)
-					{
-						refresh_cascade_tail(T.srci, 0);
-						T.srcsel = S_NONE;
-					}
-					else if (cascade_to_cascade(&F, T.srci, key))
-					{
-						refresh_cascade_tail(T.srci, 0);
-						refresh_cascade_tail(key, 0);
-						T.srcsel = S_NONE;
-					}
+					else
+						T.dstsel = S_CASCADE;
 					break;
 				}
 			}
 			break;
 		}
+		if (f_transfer(&F, &T))
+			T.srcsel = T.dstsel = S_NONE;
+		else
+			T.dstsel = S_NONE;
+		refresh();
 	} while (1);
 
 RET:
