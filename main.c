@@ -292,8 +292,9 @@ int main(void)
 						T.srcsel = S_CASCADE;
 					break;
 				default:
+					T.dsti = key;
 					/* user deselected cascade */
-					if ((T.dsti = key) == T.srci)
+					if (T.srcsel == S_CASCADE && T.srci == T.dsti)
 						T.srcsel = S_NONE;
 					else
 						T.dstsel = S_CASCADE;
