@@ -69,16 +69,4 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t);
  */
 int can_stack(char a, char b);
 
-#if 0 /* section to be removed */
-int cascade_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
-
-int cascade_to_freecell(struct freecell_t *f, size_t srci);
-
-int cascade_to_homecell(struct freecell_t *f, size_t srci);
-
-int freecell_to_cascade(struct freecell_t *f, size_t srci, size_t dsti);
-
-int to_homecell(struct freecell_t *f, int srci, enum selection_types sel);
-#endif
-
 #endif

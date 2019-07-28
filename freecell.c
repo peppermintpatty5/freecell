@@ -5,7 +5,6 @@
 #include "conio.h"
 #include "dos.h"
 #include "freecell.h"
-#include "main.h" /* TODO remove this after fixing to_homecell() */
 
 void f_init(struct freecell_t *f)
 {
@@ -142,103 +141,5 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 
 int can_stack(char a, char b)
 {
-	return getrank(b) - getrank(a) == 1 &&
-		   isblack(a) != isblack(b);
-}
-
-int cascade_to_cascade(struct freecell_t *f, size_t srci, size_t dsti)
-{
-	struct cascade_t *src = f->cascades[srci],
-					 *dst = f->cascades[dsti];
-	int valid = !dst->size || can_stack(c_peek(src), c_peek(dst));
-
-	if (valid)
-		c_push(dst, c_pop(src));
-
-	return valid;
-}
-
-int cascade_to_freecell(struct freecell_t *f, size_t srci)
-{
-	struct cascade_t *src = f->cascades[srci],
-					 *dst = f->freecells;
-	int valid = dst->size < f->num_freecells;
-
-	if (valid)
-		c_push(dst, c_pop(src));
-
-	return valid;
-}
-
-int cascade_to_homecell(struct freecell_t *f, size_t srci)
-{
-	struct cascade_t *src = f->cascades[srci];
-	char a = c_peek(src), b;
-	size_t i, dsti;
-	int valid;
-
-	for (i = 0; i < f->num_decks; i++)
-	{
-		dsti = getsuit(a) * f->num_decks + i;
-		b = f->homecells[dsti];
-		valid = (getrank(a) == 0 && b == NUM_CARDS) ||
-				(getrank(a) - getrank(b) == 1);
-		if (valid)
-		{
-			f->homecells[dsti] = c_pop(src);
-			break;
-		}
-	}
-
-	return valid;
-}
-
-int freecell_to_cascade(struct freecell_t *f, size_t srci, size_t dsti)
-{
-	struct cascade_t *src = f->freecells,
-					 *dst = f->cascades[dsti];
-	int valid = !dst->size || can_stack(src->cards[srci], c_peek(dst));
-
-	if (valid)
-		c_push(dst, c_rm(src, srci));
-
-	return valid;
-}
-
-int to_homecell(struct freecell_t *f, int srci, enum selection_types sel)
-{
-	char a, b;
-	int valid;
-	size_t i, dsti;
-
-	a = sel == S_FREECELL
-			? f->freecells->cards[srci]
-			: c_peek(f->cascades[srci]);
-
-	for (i = 0; i < f->num_decks; i++)
-	{
-		dsti = getsuit(a) * f->num_decks + i;
-		b = f->homecells[dsti];
-		valid = (getrank(a) == 0 && b == NUM_CARDS) ||
-				(getrank(a) - getrank(b) == 1);
-		if (valid)
-		{
-			switch (sel)
-			{
-			case S_FREECELL:
-				f->homecells[dsti] = c_rm(f->freecells, srci);
-				refresh_freecells();
-				break;
-			case S_CASCADE:
-				f->homecells[dsti] = c_pop(f->cascades[srci]);
-				goto_cascade(srci, f->cascades[srci]->size);
-				carderase();
-				break;
-			}
-			refresh_homecells();
-			break;
-		}
-	}
-
-	return valid;
+	return getrank(b) - getrank(a) == 1 && isblack(a) != isblack(b);
 }
