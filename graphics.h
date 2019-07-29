@@ -1,9 +1,7 @@
-#ifndef _MAIN_H_
-#define _MAIN_H_
+#ifndef _GRAPHICS_H_
+#define _GRAPHICS_H_
 
 #include "freecell.h"
-
-#define hidecursor gotoxy(1, 1)
 
 /**
  * Displays confirmation message on bottom line of screen and waits for user to
@@ -18,6 +16,17 @@ int confirm_yn(const char *message);
  */
 void update_display(struct freecell_t *f, struct transfer_t *t);
 
-void refresh(void);
+/**
+ * Clears and re-prints the screen for a new game of FreeCell. If 'f' is NOT a
+ * new game, then use 'update_display'.
+ */
+void refresh(struct freecell_t *f);
+
+/**
+ * Processes the result of a single getch().
+ */
+void accept_keypress(struct freecell_t *f, struct transfer_t *t);
+
+void g_init(void);
 
 #endif

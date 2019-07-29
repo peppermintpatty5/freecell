@@ -3,7 +3,6 @@
 #include <time.h>
 
 #include "conio.h"
-#include "dos.h"
 #include "freecell.h"
 
 void f_init(struct freecell_t *f)
