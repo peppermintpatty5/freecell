@@ -95,4 +95,3 @@ int	 _Cdecl putch		(int c);
 int	 _Cdecl ungetch		(int ch);
 
 #endif
-

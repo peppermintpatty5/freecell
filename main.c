@@ -15,42 +15,10 @@ static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
 static struct freecell_t F;
 static struct transfer_t T;
 
-int confirm_yn(const char *message)
-{
-	int status = 2;
-
-	gotoxy(1, 25);
-	textcolor(LIGHTGREEN);
-	textbackground(BLACK);
-	cprintf("%s (Y/N)", message);
-	hidecursor;
-
-	while (status == 2)
-	{
-		switch (getch())
-		{
-		case 'y':
-		case 'Y':
-			status = 1;
-			break;
-		case 'n':
-		case 'N':
-			status = 0;
-			break;
-		default:
-			break;
-		}
-	}
-	gotoxy(1, 25);
-	delline();
-
-	return status;
-}
-
 /**
  * Send the cursor to a card within a cascade.
  */
-void goto_cascade(int cascadei, int cardi)
+static void goto_cascade(int cascadei, int cardi)
 {
 	switch (F.num_decks)
 	{
@@ -113,6 +81,116 @@ static void pretty_borders(int x, int y)
 	}
 }
 
+int confirm_yn(const char *message)
+{
+	int status = 2;
+
+	gotoxy(1, 25);
+	textcolor(LIGHTGREEN);
+	textbackground(BLACK);
+	cprintf("%s (Y/N)", message);
+	hidecursor;
+
+	while (status == 2)
+	{
+		switch (getch())
+		{
+		case 'y':
+		case 'Y':
+			status = 1;
+			break;
+		case 'n':
+		case 'N':
+			status = 0;
+			break;
+		default:
+			break;
+		}
+	}
+	gotoxy(1, 25);
+	delline();
+
+	return status;
+}
+
+/**
+ * Updates only the top of the selected cascade on the display.
+ */
+static void update_cascade(struct freecell_t *f, size_t index, int select)
+{
+	struct cascade_t *cascade = f->cascades[index];
+	char a = c_peek(cascade);
+
+	if (cascade->size)
+	{
+		goto_cascade(index, cascade->size - 1);
+		cardprint(a, select);
+	}
+	if (cascade->size < MAX_CASCADE_SIZE)
+	{
+		goto_cascade(index, cascade->size);
+		carderase();
+	}
+}
+
+static void refresh_freecells(size_t index, int select)
+{
+	size_t i;
+
+	for (i = 0; i < F.num_freecells; i++)
+	{
+		goto_freecell(i);
+		if (i < F.freecells->size)
+			cardprint(F.freecells->cards[i], select && i == index);
+		else
+			carderase();
+	}
+}
+
+static void refresh_homecells(void)
+{
+	char i;
+
+	for (i = 0; i < NUM_SUITS * F.num_decks; i++)
+	{
+		goto_homecell(i);
+		if (F.homecells[i] == NUM_CARDS)
+		{
+			textcolor(DARKGRAY);
+			textbackground(BLACK);
+			cprintf(" %c", i / F.num_decks + '\3');
+		}
+		else
+			cardprint(F.homecells[i], 0);
+	}
+}
+
+void update_display(struct freecell_t *f, struct transfer_t *t)
+{
+	switch (t->srcsel)
+	{
+	case S_CASCADE:
+		update_cascade(f, t->srci, t->dstsel == S_NONE);
+		break;
+	case S_FREECELL:
+		refresh_freecells(t->srci, t->dstsel == S_NONE);
+		break;
+	}
+
+	switch (t->dstsel)
+	{
+	case S_CASCADE:
+		update_cascade(f, t->dsti, 0);
+		break;
+	case S_FREECELL:
+		refresh_freecells(t->srci, 0);
+		break;
+	case S_HOMECELL:
+		refresh_homecells();
+		break;
+	}
+}
+
 void refresh(void)
 {
 	size_t i, j;
@@ -145,63 +223,102 @@ void refresh(void)
 			cardprint(F.cascades[i]->cards[j], select);
 		}
 	}
-	refresh_freecells();
+	refresh_freecells(0, 0);
 	refresh_homecells();
 }
 
-void refresh_cascade_tail(size_t index, int select)
+/**
+ * Processes the result of a single getch().
+ */
+static void accept_keypress(void)
 {
-	struct cascade_t *cascade = F.cascades[index];
-	char a = c_peek(cascade);
+	int key;
 
-	if (cascade->size)
+	switch (key = getch())
 	{
-		goto_cascade(index, cascade->size - 1);
-		cardprint(a, select);
-	}
-	if (cascade->size < MAX_CASCADE_SIZE)
-	{
-		goto_cascade(index, cascade->size);
-		carderase();
-	}
-}
-
-void refresh_freecells(void)
-{
-	size_t i;
-	int select;
-
-	for (i = 0; i < F.num_freecells; i++)
-	{
-		select = T.srcsel == S_FREECELL && T.srci == i;
-
-		goto_freecell(i);
-		if (i < F.freecells->size)
-			cardprint(F.freecells->cards[i], select);
-		else
-			carderase();
-	}
-}
-
-void refresh_homecells(void)
-{
-	char i;
-
-	for (i = 0; i < NUM_SUITS * F.num_decks; i++)
-	{
-		goto_homecell(i);
-		if (F.homecells[i] == NUM_CARDS)
+	case 'q':
+	case 'Q':
+		if (confirm_yn("Quit game?"))
 		{
-			textcolor(DARKGRAY);
 			textbackground(BLACK);
-			cprintf(" %c", i / F.num_decks + '\3');
+			textcolor(LIGHTGRAY);
+			clrscr();
+			textmode(LASTMODE);
+			exit(EXIT_SUCCESS);
 		}
-		else
-			cardprint(F.homecells[i], 0);
+		break;
+	case 'n':
+	case 'N':
+		if (confirm_yn("Start a new game?"))
+		{
+			T.srcsel = T.dstsel = S_NONE;
+			f_newgame(&F, SINGLE_DECK);
+			refresh();
+		}
+		break;
+	case 'a':
+	case 'A':
+		switch (T.srcsel)
+		{
+		case S_NONE:
+			/* cannot select empty freecells */
+			if (F.freecells->size)
+			{
+				T.srci = F.freecells->size - 1;
+				T.srcsel = S_FREECELL;
+			}
+			break;
+		case S_FREECELL:
+			if (T.srci)
+				T.srci--;
+			else
+			{
+				T.dsti = T.srci;
+				T.dstsel = S_FREECELL;
+			}
+			break;
+		default:
+			T.dstsel = S_FREECELL;
+			break;
+		}
+		break;
+	case 'b':
+	case 'B':
+		switch (T.srcsel)
+		{
+		case S_NONE:
+			/* cannot select the homecells */
+			break;
+		default:
+			T.dstsel = S_HOMECELL;
+			break;
+		}
+		break;
+	default:
+		key -= '0';
+		if (key >= 0 && key < F.num_cascades)
+		{
+			switch (T.srcsel)
+			{
+			case S_NONE:
+				/* cannot select empty cascade */
+				if (F.cascades[T.srci = key]->size)
+					T.srcsel = S_CASCADE;
+				break;
+			default:
+				T.dsti = key;
+				T.dstsel = S_CASCADE;
+				break;
+			}
+		}
+		break;
 	}
 }
 
-void init(void)
+/**
+ * Initializes static variables and sets up display. Only call once!
+ */
+static void init(void)
 {
 	directvideo = 0;
 	textmode(C80);
@@ -212,8 +329,6 @@ void init(void)
 #define DEBUG 0
 int main(void)
 {
-	int key;
-
 	init();
 
 #if DEBUG
@@ -226,94 +341,20 @@ int main(void)
 #endif
 
 	refresh();
-	do
+	while (1)
 	{
 		hidecursor;
-		switch (key = getch())
-		{
-		case 'q':
-		case 'Q':
-			if (confirm_yn("Quit game?"))
-				goto RET;
-			break;
-		case 'n':
-		case 'N':
-			if (confirm_yn("Start a new game?"))
-			{
-				T.srcsel = T.dstsel = S_NONE;
-				f_newgame(&F, SINGLE_DECK);
-				refresh();
-			}
-			break;
-		case 'a':
-		case 'A':
-			switch (T.srcsel)
-			{
-			case S_NONE:
-				/* cannot select empty freecells */
-				if (F.freecells->size)
-				{
-					T.srci = F.freecells->size - 1;
-					T.srcsel = S_FREECELL;
-				}
-				break;
-			case S_FREECELL:
-				if (T.srci)
-					T.srci--;
-				else
-					T.srcsel = S_NONE;
-				break;
-			default:
-				T.dstsel = S_FREECELL;
-				break;
-			}
-			break;
-		case 'b':
-		case 'B':
-			switch (T.srcsel)
-			{
-			case S_NONE:
-				/* cannot select the homecells */
-				break;
-			default:
-				T.dstsel = S_HOMECELL;
-				break;
-			}
-			break;
-		default:
-			key -= '0';
-			if (key >= 0 && key < F.num_cascades)
-			{
-				switch (T.srcsel)
-				{
-				case S_NONE:
-					/* cannot select empty cascade */
-					if (F.cascades[T.srci = key]->size)
-						T.srcsel = S_CASCADE;
-					break;
-				default:
-					T.dsti = key;
-					/* user deselected cascade */
-					if (T.srcsel == S_CASCADE && T.srci == T.dsti)
-						T.srcsel = S_NONE;
-					else
-						T.dstsel = S_CASCADE;
-					break;
-				}
-			}
-			break;
-		}
-		if (f_transfer(&F, &T))
-			T.srcsel = T.dstsel = S_NONE;
-		else
-			T.dstsel = S_NONE;
-		refresh();
-	} while (1);
+		accept_keypress();
 
-RET:
-	textbackground(BLACK);
-	textcolor(LIGHTGRAY);
-	clrscr();
-	textmode(LASTMODE);
-	return EXIT_SUCCESS;
+		if (f_transfer(&F, &T))
+		{
+			update_display(&F, &T);
+			T.srcsel = T.dstsel = S_NONE;
+		}
+		else
+		{
+			T.dstsel = S_NONE;
+			update_display(&F, &T);
+		}
+	}
 }

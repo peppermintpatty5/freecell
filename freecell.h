@@ -41,6 +41,14 @@ struct freecell_t
 	char homecells[NUM_SUITS * MAX_DECKS];
 };
 
+/**
+ * Contains the data for transferring a single card. 'scri' and 'dsti' are the
+ * source/destitnation indices of the locations specified by 'srcsel' and
+ * 'dstsel' respectively.
+ * 
+ * If 'srcsel' equals 'dstsel' and 'srci' equals 'dsti', then the repsective
+ * location is to be deselected.
+ */
 struct transfer_t
 {
 	size_t srci;

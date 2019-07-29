@@ -82,6 +82,9 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 	int valid;
 	struct cascade_t *dst;
 
+	if (t->srcsel == t->dstsel && t->srci == t->dsti)
+		return 1;
+
 	switch (t->srcsel)
 	{
 	case S_CASCADE:
@@ -98,12 +101,14 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 	{
 	case S_CASCADE:
 		dst = f->cascades[t->dsti];
-		if (valid = !dst->size || can_stack(a, c_peek(dst)))
+		valid = !dst->size || can_stack(a, c_peek(dst));
+		if (valid)
 			c_push(dst, a);
 		break;
 	case S_FREECELL:
 		dst = f->freecells;
-		if (valid = dst->size < f->num_freecells)
+		valid = dst->size < f->num_freecells;
+		if (valid)
 			c_push(dst, a);
 		break;
 	case S_HOMECELL:
@@ -114,7 +119,7 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 					(getrank(a) - getrank(*b) == 1);
 			if (valid)
 			{
-				*b = a; /* hehehe */
+				*b = a;
 				break;
 			}
 		}

@@ -1,6 +1,8 @@
 #ifndef _MAIN_H_
 #define _MAIN_H_
 
+#include "freecell.h"
+
 #define hidecursor gotoxy(1, 1)
 
 /**
@@ -10,24 +12,12 @@
  */
 int confirm_yn(const char *message);
 
-void goto_cascade(int, int);
+/**
+ * Update the necessary parts of the display based on which components are
+ * involved in the specified transfer.
+ */
+void update_display(struct freecell_t *f, struct transfer_t *t);
 
 void refresh(void);
-
-void refresh_cascade_tail(size_t index, int select);
-
-void refresh_freecells(void);
-
-void refresh_homecells(void);
-
-/**
- * Initializes static variables and sets up display. Only call once!
- */
-void init(void);
-
-/**
- * Program point of entry.
- */
-int main(void);
 
 #endif
