@@ -1,6 +1,8 @@
 #ifndef _CARD_H_
 #define _CARD_H_
 
+#include <stddef.h>
+
 #define NUM_RANKS (13)
 #define NUM_SUITS (4)
 

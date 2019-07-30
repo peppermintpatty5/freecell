@@ -1,6 +1,8 @@
 #ifndef _FREECELL_H_
 #define _FREECELL_H_
 
+#include <stddef.h>
+
 #include "card.h"
 #include "cascade.h"
 

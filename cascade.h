@@ -1,6 +1,8 @@
 #ifndef _CASCADE_H_
 #define _CASCADE_H_
 
+#include <stddef.h>
+
 /**
  * Stack data structure of cards (bytes). The stacks of cards in FreeCell are
  * often referred to as cascades.

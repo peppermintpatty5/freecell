@@ -1,8 +1,11 @@
 #ifndef _EXTRA_H_
 #define _EXTRA_H_
-#if 0
+
+#include <stddef.h>
+
 #include "cascade.h"
 
+#if 0
 /**
  * Helper function that returns the number of continuously stackable cards from
  * the top of the cascade. The minimum value of 1 indicates that the top card
@@ -30,4 +33,5 @@ size_t count_empty_cascades(size_t dsti);
 int cascade_to_cascade_m(int srci, int dsti, int delay_ms);
 
 #endif
+
 #endif
