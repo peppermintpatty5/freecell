@@ -1,7 +1,17 @@
-#include "extra.h"
+#include <dos.h>
 
-#if 0
-size_t count_stack_streak(struct cascade_t *src)
+#include "cascade.h"
+#include "extra.h"
+#include "freecell.h"
+#include "graphics.h"
+
+/**
+ * Helper function that returns the number of continuously stackable cards from
+ * the top of the cascade. The minimum value of 1 indicates that the top card
+ * is not stackable on the card beneath it. By contrast, a value equal to
+ * 'src->size' indicates that the entire cascade is a valid FreeCell stack.
+ */
+static size_t count_stack_streak(struct cascade_t *src)
 {
 	size_t i;
 
@@ -14,93 +24,66 @@ size_t count_stack_streak(struct cascade_t *src)
 	return src->size - i;
 }
 
-void idkman(size_t srci, size_t dsti, size_t count, int delay_ms)
+static size_t count_empty_stacks(struct freecell_t *f, struct cascade_t *src)
 {
-	size_t i;
+	size_t i, sum = 0;
+	struct cascade_t *dst;
 
-	for (i = 0; i < count - 1; i++)
+	for (i = 0; i < f->num_cascades; i++)
 	{
-		cascade_to_freecell(srci);
-		hidecursor();
-		delay(delay_ms);
+		dst = f->cascades[i];
+		if (src != dst && !dst->size)
+			sum++;
 	}
-	cascade_to_cascade(srci, dsti);
-	for (i = 0; i < count - 1; i++)
-	{
-		delay(delay_ms);
-		freecell_to_cascade(freecells->size - 1, dsti);
-		hidecursor();
-	}
+
+	return sum;
 }
 
-size_t count_empty_cascades(size_t dsti)
+/**
+ * Unloads as many cards to the freecells as needed to facilitate the transfer
+ * of a column of cards, such that all progress remains completely reversable.
+ * Then, it will attempt to perform 'f_transfer(f, t)' and return this result.
+ * 
+ * Since this is a helper function to 'auto_transfer', 't' is guaranteed to be
+ * a cascade-to-cascade transfer.
+ * 
+ * Do NOT try to unload from empty source cascade!
+ */
+static int unload(struct freecell_t *f, struct transfer_t *t)
+{
+	struct cascade_t *src = f->cascades[t->srci],
+					 *dst = f->cascades[t->dsti];
+	size_t lim = count_stack_streak(src) - 1;
+
+	t->dstsel = S_FREECELL;
+	while (lim-- && (!dst->size || !can_stack(c_peek(src), c_peek(dst))))
+	{
+		if (!f_transfer(f, t)) /* could run out of freecell space */
+			break;
+		else
+			update_display(f, t);
+
+		delay(200);
+	}
+	t->dstsel = S_CASCADE;
+
+	return f_transfer(f, t);
+}
+
+static int reload(struct freecell_f *f, struct transfer_t *t)
+{
+}
+
+int auto_transfer(struct freecell_t *f, struct transfer_t *t)
 {
 	size_t i, j;
+	struct cascade_t *src, *dst;
 
-	for (i = 0, j = 0; i < NUM_CASCADES; i++)
+	if (t->srcsel == S_CASCADE && t->dstsel == S_CASCADE && t->srci != t->dsti)
 	{
-		if (!cascades[i]->size)
-			j++;
-	}
-
-	return j - !cascades[dsti]->size;
-}
-
-int cascade_to_cascade_m(int srci, int dsti, int delay_ms)
-{
-	struct cascade_t *src = cascades[srci],
-					 *dst = cascades[dsti];
-	size_t count = count_stack_streak(src),
-		   num_empty = count_empty_cascades(dsti),
-		   num_free = NUM_FREECELLS - freecells->size,
-		   i;
-	/* Determine how many cards need to be moved, stored in 'count' */
-	if (dst->size)
-	{
-		while (count && !can_stack(src->cards[src->size - count], c_peek(dst)))
-			count--;
-	}
-	else if (!num_empty && count > num_free + 1)
-	{
-		/* Special case where 'dst' is the only empty cascade */
-		count = num_free + 1;
-	}
-	/* Do NOT try to move 0 cards - unsigned underflow! */
-	if (count)
-	{
-		/* Transfer can be done all in one shot */
-		if (count <= num_free + 1)
-		{
-			idkman(srci, dsti, count, delay_ms);
-
-			return count;
-		}
-		/* Transfer must be done recursively with an empty cascade */
-		else
-		{
-			/* Try to locate an empty cascade */
-			for (i = 0; i < NUM_CASCADES; i++)
-			{
-				if (i != dsti && !cascades[i]->size)
-					break;
-			}
-			if (i < NUM_CASCADES)
-			{
-				cascade_to_cascade_m(srci, i, delay_ms);
-				if (cascade_to_cascade_m(srci, dsti, delay_ms))
-				{
-					cascade_to_cascade_m(i, dsti, delay_ms);
-					return count;
-				}
-				/* Out of luck */
-				else
-					return 0;
-			}
-			else
-				return 0;
-		}
+		unload(f, t);
+		return 1;
 	}
 	else
-		return 0;
+		return f_transfer(f, t);
 }
-#endif
