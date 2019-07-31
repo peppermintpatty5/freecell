@@ -2,7 +2,8 @@
 #include <stdlib.h>
 #include <time.h>
 
-#include "conio.h"
+#include <conio.h>
+
 #include "freecell.h"
 
 void f_init(struct freecell_t *f)

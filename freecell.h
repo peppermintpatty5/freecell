@@ -75,7 +75,7 @@ void f_newgame(struct freecell_t *f, enum game_types gt);
 int f_transfer(struct freecell_t *f, struct transfer_t *t);
 
 /**
- * Determines if card 'a' can be stacked on top of card 'b'.
+ * Determines if card 'a' can stack on card 'b'.
  */
 int can_stack(char a, char b);
 

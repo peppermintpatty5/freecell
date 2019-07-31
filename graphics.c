@@ -1,7 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "conio.h"
+#include <conio.h>
+
 #include "card.h"
 #include "cascade.h"
 #include "graphics.h"
