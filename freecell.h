@@ -47,7 +47,7 @@ struct freecell_t
  * Contains the data for transferring a single card. 'scri' and 'dsti' are the
  * source/destitnation indices of the locations specified by 'srcsel' and
  * 'dstsel' respectively.
- * 
+ *
  * If 'srcsel' equals 'dstsel' and 'srci' equals 'dsti', then the repsective
  * location is to be deselected.
  */
@@ -73,6 +73,11 @@ void f_newgame(struct freecell_t *f, enum game_types gt);
  * Performs a transfer on 'f' as specified by 't'.
  */
 int f_transfer(struct freecell_t *f, struct transfer_t *t);
+
+/**
+ * Swaps source and destination of 't'.
+ */
+void t_reverse(struct transfer_t *t);
 
 /**
  * Determines if card 'a' can stack on card 'b'.

@@ -9,9 +9,9 @@
  * If the player wants to move a stack between cascades in one shot, then this
  * function will attempt to automate that transfer. Otherwise, this function
  * will defer to f_transfer().
- * 
- * This function will also perform the necessary calls to update_display().
+ *
+ * This function will also perform the necessary calls to 'update_display'.
  */
-int auto_transfer(struct freecell_t *f, struct transfer_t *t);
+int auto_transfer(struct freecell_t *f, const struct transfer_t *t);
 
 #endif

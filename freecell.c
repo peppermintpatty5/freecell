@@ -144,6 +144,18 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 	return valid;
 }
 
+void t_reverse(struct transfer_t *t)
+{
+	size_t _srci = t->srci;
+	enum selection_types _srcsel = t->srcsel;
+
+	t->srci = t->dsti;
+	t->srcsel = t->dstsel;
+
+	t->dsti = _srci;
+	t->dstsel = _srcsel;
+}
+
 int can_stack(char a, char b)
 {
 	return getrank(b) - getrank(a) == 1 && isblack(a) != isblack(b);
