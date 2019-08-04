@@ -10,22 +10,24 @@
 
 int main(void)
 {
-	struct freecell_t F;
-	struct transfer_t T;
+	FreeCell F;
+	Transfer T;
 	int i;
 
 	f_init(&F);
 	g_init();
-	T.srcsel = T.dstsel = S_NONE;
+	T.srct = T.dstt = ST_NONE;
 
 #if DEBUG
 	f_newgame(&F, DOUBLE_DECK);
+	F.num_freecells = 2;
 	for (i = 0; i < F.num_cascades; i++)
 		c_clr(F.cascades[i]);
 
 	for (i = 12; i >= 8; i--)
 		c_push(F.cascades[0], getcard(i, i % 2 << 1));
 	c_push(F.cascades[1], getcard(12, 0));
+	c_push(F.cascades[2], getcard(9, 2));
 	refresh(&F);
 #else
 	f_newgame(&F, DOUBLE_DECK);
@@ -40,11 +42,11 @@ int main(void)
 		if (i)
 		{
 			update_display(&F, &T);
-			T.srcsel = T.dstsel = S_NONE;
+			T.srct = T.dstt = ST_NONE;
 		}
 		else
 		{
-			T.dstsel = S_NONE;
+			T.dstt = ST_NONE;
 			update_display(&F, &T);
 		}
 	}

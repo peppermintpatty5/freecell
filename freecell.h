@@ -15,73 +15,73 @@
 #define MAX_CASCADES (10)
 #define MAX_FREECELLS (8)
 
-enum game_types
+typedef enum
 {
 	SINGLE_DECK,
 	DOUBLE_DECK
-};
+} GameType;
 
-enum selection_types
+typedef enum
 {
-	S_NONE,
-	S_CASCADE,
-	S_FREECELL,
-	S_HOMECELL
-};
+	ST_NONE,
+	ST_CASCADE,
+	ST_FREECELL,
+	ST_HOMECELL
+} SelectType;
 
 /**
  * Contains the data for a game of FreeCell. Supports both single and double
  * deck FreeCell variations.
  */
-struct freecell_t
+typedef struct
 {
 	size_t num_decks;
 	size_t num_cascades;
 	size_t num_freecells;
-	struct cascade_t *cascades[MAX_CASCADES];
-	struct cascade_t *freecells;
-	char homecells[NUM_SUITS * MAX_DECKS];
-};
+	Cascade *cascades[MAX_CASCADES];
+	Cascade *freecells;
+	Card homecells[NUM_SUITS * MAX_DECKS];
+} FreeCell;
 
 /**
  * Contains the data for transferring a single card. 'scri' and 'dsti' are the
- * source/destitnation indices of the locations specified by 'srcsel' and
- * 'dstsel' respectively.
+ * source/destitnation indices of the locations specified by 'srct' and
+ * 'dstt' respectively.
  *
- * If 'srcsel' equals 'dstsel' and 'srci' equals 'dsti', then the repsective
+ * If 'srct' equals 'dstt' and 'srci' equals 'dsti', then the repsective
  * location is to be deselected.
  */
-struct transfer_t
+typedef struct
 {
 	size_t srci;
 	size_t dsti;
-	enum selection_types srcsel;
-	enum selection_types dstsel;
-};
+	SelectType srct;
+	SelectType dstt;
+} Transfer;
 
 /**
  * Struct members that are pointers must be initialized before use.
  */
-void f_init(struct freecell_t *f);
+void f_init(FreeCell *f);
 
 /**
  * Deals a new FreeCell game according to presets specified by the game type.
  */
-void f_newgame(struct freecell_t *f, enum game_types gt);
+void f_newgame(FreeCell *f, GameType gt);
 
 /**
  * Performs a transfer on 'f' as specified by 't'.
  */
-int f_transfer(struct freecell_t *f, struct transfer_t *t);
+int f_transfer(FreeCell *f, Transfer *t);
 
 /**
  * Swaps source and destination of 't'.
  */
-void t_reverse(struct transfer_t *t);
+void t_reverse(Transfer *t);
 
 /**
  * Determines if card 'a' can stack on card 'b'.
  */
-int can_stack(char a, char b);
+int can_stack(Card a, Card b);
 
 #endif

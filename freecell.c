@@ -6,7 +6,7 @@
 
 #include "freecell.h"
 
-void f_init(struct freecell_t *f)
+void f_init(FreeCell *f)
 {
 	size_t i;
 
@@ -19,10 +19,10 @@ void f_init(struct freecell_t *f)
 /**
  * Clears the cascades and deals 'f->num_decks' shuffled decks.
  */
-static void deal(struct freecell_t *f)
+static void deal(FreeCell *f)
 {
 	size_t i, j, r, j_ = 0;
-	char deck[NUM_CARDS], c;
+	Card deck[NUM_CARDS], c;
 
 	for (i = 0; i < NUM_CARDS; i++)
 		deck[i] = i;
@@ -45,7 +45,7 @@ static void deal(struct freecell_t *f)
 	}
 }
 
-void f_newgame(struct freecell_t *f, enum game_types gt)
+void f_newgame(FreeCell *f, GameType gt)
 {
 	size_t i;
 
@@ -75,43 +75,43 @@ void f_newgame(struct freecell_t *f, enum game_types gt)
 	deal(f);
 }
 
-int f_transfer(struct freecell_t *f, struct transfer_t *t)
+int f_transfer(FreeCell *f, Transfer *t)
 {
 	size_t i;
-	char a, *b;
+	Card a, *b;
+	Cascade *dst;
 	int valid;
-	struct cascade_t *dst;
 
-	if (t->srcsel == t->dstsel && t->srci == t->dsti)
+	if (t->srct == t->dstt && t->srci == t->dsti)
 		return 1;
 
-	switch (t->srcsel)
+	switch (t->srct)
 	{
-	case S_CASCADE:
+	case ST_CASCADE:
 		a = c_peek(f->cascades[t->srci]);
 		break;
-	case S_FREECELL:
+	case ST_FREECELL:
 		a = f->freecells->cards[t->srci];
 		break;
 	default:
 		return 0;
 	}
 
-	switch (t->dstsel)
+	switch (t->dstt)
 	{
-	case S_CASCADE:
+	case ST_CASCADE:
 		dst = f->cascades[t->dsti];
 		valid = !dst->size || can_stack(a, c_peek(dst));
 		if (valid)
 			c_push(dst, a);
 		break;
-	case S_FREECELL:
+	case ST_FREECELL:
 		dst = f->freecells;
 		valid = dst->size < f->num_freecells;
 		if (valid)
 			c_push(dst, a);
 		break;
-	case S_HOMECELL:
+	case ST_HOMECELL:
 		for (i = 0; i < f->num_decks; i++)
 		{
 			b = &f->homecells[getsuit(a) * f->num_decks + i];
@@ -130,12 +130,12 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 
 	if (valid)
 	{
-		switch (t->srcsel)
+		switch (t->srct)
 		{
-		case S_CASCADE:
+		case ST_CASCADE:
 			c_pop(f->cascades[t->srci]);
 			break;
-		case S_FREECELL:
+		case ST_FREECELL:
 			c_rm(f->freecells, t->srci);
 			break;
 		}
@@ -144,19 +144,19 @@ int f_transfer(struct freecell_t *f, struct transfer_t *t)
 	return valid;
 }
 
-void t_reverse(struct transfer_t *t)
+void t_reverse(Transfer *t)
 {
 	size_t _srci = t->srci;
-	enum selection_types _srcsel = t->srcsel;
+	SelectType _srct = t->srct;
 
 	t->srci = t->dsti;
-	t->srcsel = t->dstsel;
+	t->srct = t->dstt;
 
 	t->dsti = _srci;
-	t->dstsel = _srcsel;
+	t->dstt = _srct;
 }
 
-int can_stack(char a, char b)
+int can_stack(Card a, Card b)
 {
 	return getrank(b) - getrank(a) == 1 && isblack(a) != isblack(b);
 }

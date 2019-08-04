@@ -16,18 +16,18 @@ int confirm_yn(const char *message);
  * Update the necessary parts of the display based on which components are
  * involved in the specified transfer.
  */
-void update_display(struct freecell_t *f, struct transfer_t *t);
+void update_display(FreeCell *f, Transfer *t);
 
 /**
  * Clears and re-prints the screen for a new game of FreeCell. If 'f' is NOT a
  * new game, then use 'update_display'.
  */
-void refresh(struct freecell_t *f);
+void refresh(FreeCell *f);
 
 /**
  * Processes the result of a single getch().
  */
-void accept_keypress(struct freecell_t *f, struct transfer_t *t);
+void accept_keypress(FreeCell *f, Transfer *t);
 
 void g_init(void);
 

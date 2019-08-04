@@ -13,19 +13,19 @@
 #define NUM_CARDS (NUM_RANKS * NUM_SUITS)
 
 /**
- * Composes a byte (char) through bitshift + OR. Bits 0-1 are suit, bits 2-5
+ * Composes a card (byte) through bitshift + OR. Bits 0-1 are suit, bits 2-5
  * are rank, and bits 6-7 are unused. Rank shall be from 0-12 and suit shall be
  * from 0-3. Macro is used mainly for debugging.
  */
 #define getcard(rank, suit) (((rank) << 2) | (suit))
 
 /**
- * Extracts the rank (bits 2-5) from a byte (char) value.
+ * Extracts the rank (bits 2-5) from card (byte) value.
  */
 #define getrank(card) ((card) >> 2)
 
 /**
- * Extracts the suit (bits 0-1) from a byte (char) value.
+ * Extracts the suit (bits 0-1) from card (byte) value.
  */
 #define getsuit(card) ((card) & (0x3))
 
@@ -34,10 +34,12 @@
  */
 #define isblack(card) (getsuit(card) >> 1)
 
+typedef unsigned char Card;
+
 /**
  * Prints a card at the current location of the cursor.
  */
-void cardprint(char card, char select);
+void cardprint(Card card, char select);
 
 /**
  * Prints 5 spaces at the current location of the cursor.
