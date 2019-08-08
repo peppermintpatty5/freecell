@@ -53,6 +53,7 @@ typedef struct
  */
 typedef struct
 {
+	/* TODO: replace with unions? which may be more elegant */
 	size_t srci;
 	size_t dsti;
 	SelectType srct;
@@ -72,16 +73,11 @@ void f_newgame(FreeCell *f, GameType gt);
 /**
  * Performs a transfer on 'f' as specified by 't'.
  */
-int f_transfer(FreeCell *f, Transfer *t);
+int f_transfer(FreeCell *f, const Transfer *t);
 
 /**
  * Swaps source and destination of 't'.
  */
 void t_reverse(Transfer *t);
-
-/**
- * Determines if card 'a' can stack on card 'b'.
- */
-int can_stack(Card a, Card b);
 
 #endif

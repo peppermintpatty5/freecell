@@ -33,6 +33,11 @@ Cascade *cascade_new(size_t max_size);
 void c_clr(Cascade *stack);
 
 /**
+ * Increments stack size and puts card at the top (highest index).
+ */
+void c_push(Cascade *stack, Card card);
+
+/**
  * Returns the top card (highest index) of the stack.
  */
 Card c_peek(Cascade *stack);
@@ -43,14 +48,14 @@ Card c_peek(Cascade *stack);
 Card c_pop(Cascade *stack);
 
 /**
- * Increments stack size and puts card at the top (highest index).
- */
-void c_push(Cascade *stack, Card card);
-
-/**
  * Removes the nth card in the stack, shifting higher cards down the stack to
  * preserve FIFO order.
  */
 Card c_rm(Cascade *stack, size_t index);
+
+/**
+ * Determines if card 'a' can stack on card 'b'.
+ */
+int can_stack(Card a, Card b);
 
 #endif

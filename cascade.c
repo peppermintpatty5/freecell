@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include <stdlib.h>
 
 #include "cascade.h"
@@ -25,6 +24,11 @@ void c_clr(Cascade *stack)
 	stack->size = 0;
 }
 
+void c_push(Cascade *stack, Card card)
+{
+	stack->cards[stack->size++] = card;
+}
+
 Card c_peek(Cascade *stack)
 {
 	return stack->cards[stack->size - 1];
@@ -33,11 +37,6 @@ Card c_peek(Cascade *stack)
 Card c_pop(Cascade *stack)
 {
 	return stack->cards[--stack->size];
-}
-
-void c_push(Cascade *stack, Card card)
-{
-	stack->cards[stack->size++] = card;
 }
 
 Card c_rm(Cascade *stack, size_t index)
@@ -50,4 +49,9 @@ Card c_rm(Cascade *stack, size_t index)
 		stack->cards[i] = stack->cards[i + 1];
 
 	return rm;
+}
+
+int can_stack(Card a, Card b)
+{
+	return getrank(b) - getrank(a) == 1 && isblack(a) != isblack(b);
 }

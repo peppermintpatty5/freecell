@@ -75,7 +75,7 @@ void f_newgame(FreeCell *f, GameType gt)
 	deal(f);
 }
 
-int f_transfer(FreeCell *f, Transfer *t)
+int f_transfer(FreeCell *f, const Transfer *t)
 {
 	size_t i;
 	Card a, *b;
@@ -154,9 +154,4 @@ void t_reverse(Transfer *t)
 
 	t->dsti = _srci;
 	t->dstt = _srct;
-}
-
-int can_stack(Card a, Card b)
-{
-	return getrank(b) - getrank(a) == 1 && isblack(a) != isblack(b);
 }

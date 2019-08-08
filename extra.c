@@ -1,92 +1,36 @@
 #include <dos.h>
+#include <conio.h>
 
 #include "cascade.h"
 #include "extra.h"
 #include "freecell.h"
 #include "graphics.h"
 
-/**
- * Helper function that returns the number of continuously stackable cards from
- * the top of the cascade. The minimum value of 1 indicates that the top card
- * is not stackable on the card beneath it. By contrast, a value equal to
- * 'src->size' indicates that the entire cascade is a valid FreeCell stack.
- */
-static size_t count_stack_streak(Cascade *src)
+static size_t auto_card_count(Cascade *src, Cascade *dst)
 {
-	size_t i;
+	Card b;
+	size_t i = src->size;
 
-	for (i = src->size - 1; i > 0; i--)
+	while (--i && can_stack(src->cards[i], src->cards[i - 1]))
+		continue;
+
+	if (dst->size)
 	{
-		if (!can_stack(src->cards[i], src->cards[i - 1]))
-			break;
+		b = c_peek(dst);
+		while (!can_stack(src->cards[i], b) && ++i < src->size)
+			continue;
 	}
 
 	return src->size - i;
 }
 
-/**
- * Unloads as many cards to the freecells as needed to facilitate the transfer
- * of a column of cards, such that all progress remains completely reversable
- * via 't_reverse' + 'reload'.
-
- * Since this is a helper function to 'auto_transfer', 't' is guaranteed to be
- * a cascade-to-cascade transfer.
- *
- * Do NOT try to unload from an empty source cascade!
- */
-static void unload(FreeCell *f, Transfer *t)
-{
-	Transfer T = *t;
-	Cascade *src = f->cascades[t->srci],
-			*dst = f->cascades[t->dsti];
-	size_t limit = count_stack_streak(src) - 1;
-
-	T.dstt = ST_FREECELL;
-	while (limit-- && (!dst->size || !can_stack(c_peek(src), c_peek(dst))))
-	{
-		if (!f_transfer(f, &T)) /* could run out of freecell space */
-			break;
-		else
-			update_display(f, &T);
-
-		delay(200);
-	}
-}
-
-/**
- * Reloads the destination cascade using the cards in the freecells. The
- * 'limit' parameter is provided to prevent stray cards from being reloaded,
- * and to preserve the original size of the freecells during 'auto_transfer'.
- */
-static void reload(FreeCell *f, Transfer *t, size_t limit)
-{
-	Transfer T = *t;
-
-	T.srci = f->freecells->size;
-	T.srct = ST_FREECELL;
-	while (T.srci-- > limit)
-	{
-		if (!f_transfer(f, &T))
-			break;
-		else
-			update_display(f, &T);
-
-		delay(200);
-	}
-}
-
-/**
- * Attempts to locate an empty cascade. If found, the destination of 't' is
- * updated accordingly and non-zero is returned, zero otherwise.
- */
 static int find_empty(FreeCell *f, Transfer *t)
 {
 	size_t i;
 
-	t->dstt = ST_CASCADE; /* just to be sure */
 	for (i = 0; i < f->num_cascades; i++)
 	{
-		if (i != t->srci && !f->cascades[i]->size)
+		if (t->dsti != i && !f->cascades[i]->size)
 		{
 			t->dsti = i;
 			return 1;
@@ -96,25 +40,109 @@ static int find_empty(FreeCell *f, Transfer *t)
 	return 0;
 }
 
-int auto_transfer(FreeCell *f, const Transfer *t)
+/**
+ * Ugly recursive function that should work.
+ */
+static int z(FreeCell *f, const Transfer *t, Transfer *last, const size_t n)
 {
 	Transfer T = *t;
-	Cascade *src, *dst;
-	const size_t limit = f->freecells->size;
+	size_t i, _n;
 
-	if (T.srct == ST_CASCADE && T.dstt == ST_CASCADE && T.srci != T.dsti)
+	/* Move up to 'n - 1' card to the freecells */
+	T.dstt = ST_FREECELL;
+	for (i = 0; i < n - 1; i++)
 	{
-		unload(f, &T);
-
 		if (f_transfer(f, &T))
+		{
 			update_display(f, &T);
+			delay(200);
+		}
 		else
-			t_reverse(&T);
+			break;
+	}
+	_n = n - i;
+	T.dstt = ST_CASCADE;
 
-		reload(f, &T, limit);
+	if (_n > 1) /* There are still cards that need to be moved */
+	{
+		if (find_empty(f, &T))
+		{
+			f_transfer(f, &T);
+			update_display(f, &T);
+			delay(200);
+			T.srct = ST_FREECELL;
+			T.srci = f->freecells->size - 1;
+			for (i = 0; i < n - _n; i++)
+			{
+				f_transfer(f, &T);
+				update_display(f, &T);
+				delay(200);
+				T.srci--;
+			}
+			T.srct = ST_CASCADE;
+
+			if (last)
+			{
+				T.srci = last->dsti;
+				z(f, &T, NULL, f->cascades[T.srci]->size);
+			}
+
+			T.srci = t->srci;
+
+			return z(f, t, &T, _n - 1);
+		}
+		else /* No more options */
+		{
+			t_reverse(&T);
+			T.srct = ST_FREECELL;
+			T.srci = f->freecells->size - 1;
+			for (i = 0; i < n - _n; i++)
+			{
+				f_transfer(f, &T);
+				update_display(f, &T);
+				delay(200);
+				T.srci--;
+			}
+
+			return 0;
+		}
+	}
+	else /* Move the final card to the destination */
+	{
+		f_transfer(f, &T);
+		update_display(f, &T);
+		delay(200);
+		T.srct = ST_FREECELL;
+		T.srci = f->freecells->size - 1;
+		for (i = 0; i < n - _n; i++)
+		{
+			f_transfer(f, &T);
+			update_display(f, &T);
+			delay(200);
+			T.srci--;
+		}
+
+		if (last)
+		{
+			t_reverse(last);
+			last->dsti = t->dsti;
+			z(f, last, NULL, n);
+		}
 
 		return 1;
 	}
+}
+
+int auto_transfer(FreeCell *f, const Transfer *t)
+{
+	size_t i;
+
+	if (t->srct == ST_CASCADE && t->dstt == ST_CASCADE && t->srci != t->dsti)
+	{
+		i = auto_card_count(f->cascades[t->srci], f->cascades[t->dsti]);
+
+		return i ? z(f, t, NULL, i) : 0;
+	}
 	else
-		return f_transfer(f, &T);
+		return f_transfer(f, t);
 }

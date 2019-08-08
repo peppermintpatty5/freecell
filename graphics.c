@@ -164,7 +164,7 @@ static void refresh_homecells(FreeCell *f)
 	}
 }
 
-void update_display(FreeCell *f, Transfer *t)
+void update_display(FreeCell *f, const Transfer *t)
 {
 	switch (t->srct)
 	{
