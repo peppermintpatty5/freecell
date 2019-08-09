@@ -6,9 +6,9 @@ void cardprint(Card card, char select)
 {
 	char str_rank[3];
 
-	str_rank[0] = "A234567891JQK"[getrank(card)]; /* Hardcoded values */
-	str_rank[1] = str_rank[0] == '1' ? '0' : ' '; /* The '0' in '10'  */
-	str_rank[2] = '\0';							  /* Null terminator  */
+	str_rank[0] = "A234567891JQKwxyz"[getrank(card)];
+	str_rank[1] = str_rank[0] == '1' ? '0' : ' ';
+	str_rank[2] = '\0';
 
 	textcolor(isblack(card) ? CYAN : LIGHTRED);
 	textbackground(BLACK);
