@@ -1,7 +1,7 @@
 #ifndef _EXTRA_H_
 #define _EXTRA_H_
 
-#include <stddef.h>
+#include <stdlib.h>
 
 #include "freecell.h"
 
