@@ -120,10 +120,10 @@ int auto_transfer(FreeCell *f, const Transfer *t)
 	{
 		src = f->cascades[t->srci];
 		dst = f->cascades[t->dsti];
-		quota = auto_card_count(src, dst) - 1;
+		quota = auto_card_count(src, dst);
 		hmm = find_empty(f);
 
-		if (quota)
+		if (quota--)
 		{
 			i = hmm->size; /* backup */
 			while (hmm->size)
@@ -134,6 +134,8 @@ int auto_transfer(FreeCell *f, const Transfer *t)
 			}
 			hmm->size = i; /* restore */
 		}
+		else
+			return 0;
 
 		result = f_transfer(f, t);
 		update_display(f, t);
