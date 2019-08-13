@@ -9,10 +9,10 @@
 
 #define hidecursor gotoxy(1, 1)
 
-static const char BORDER_TOP[] = {201, 205, 205, 205, 205, 205, 205, 187, 0},
-				  BORDER_MID[] = {199, 196, 196, 196, 196, 196, 196, 182, 0},
-				  BORDER_BOT[] = {200, 205, 205, 205, 205, 205, 205, 188, 0},
-				  BORDER_L_R[] = {186, 32, 32, 32, 32, 32, 32, 186, 0};
+static const char BORDER_TOP[] = "\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xBB",
+				  BORDER_MID[] = "\xC7\xC4\xC4\xC4\xC4\xC4\xC4\xB6",
+				  BORDER_BOT[] = "\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xBC",
+				  BORDER_L_R[] = "\xBA\x20\x20\x20\x20\x20\x20\xBA";
 
 /**
  * Send the cursor to a card within a cascade.
