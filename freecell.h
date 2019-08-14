@@ -75,9 +75,4 @@ void f_newgame(FreeCell *f, GameType gt);
  */
 int f_transfer(FreeCell *f, const Transfer *t);
 
-/**
- * Swaps source and destination of 't'.
- */
-void t_reverse(Transfer *t);
-
 #endif

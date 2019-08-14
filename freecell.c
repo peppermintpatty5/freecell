@@ -143,15 +143,3 @@ int f_transfer(FreeCell *f, const Transfer *t)
 
 	return valid;
 }
-
-void t_reverse(Transfer *t)
-{
-	size_t _srci = t->srci;
-	SelectType _srct = t->srct;
-
-	t->srci = t->dsti;
-	t->srct = t->dstt;
-
-	t->dsti = _srci;
-	t->dstt = _srct;
-}

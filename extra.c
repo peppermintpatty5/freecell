@@ -8,18 +8,21 @@
 #include "freecell.h"
 #include "graphics.h"
 
+#define DELAY_MS (100)
+
 typedef struct
 {
-	size_t size, data[0];
-} Something;
+	size_t size;
+	size_t data[0];
+} IndexSet;
 
-static Something *indexset_new(size_t max_size)
+static IndexSet *indexset_new(size_t max_size)
 {
-	Something *hmm = malloc(sizeof(Something) + max_size * sizeof(size_t));
+	IndexSet *set = malloc(sizeof(IndexSet) + max_size * sizeof(size_t));
 
-	if (hmm)
+	if (set)
 	{
-		hmm->size = 0;
+		set->size = 0;
 	}
 	else
 	{
@@ -27,7 +30,7 @@ static Something *indexset_new(size_t max_size)
 		exit(EXIT_FAILURE);
 	}
 
-	return hmm;
+	return set;
 }
 
 static size_t auto_card_count(Cascade *src, Cascade *dst)
@@ -49,40 +52,39 @@ static size_t auto_card_count(Cascade *src, Cascade *dst)
 }
 
 /**
- * Returns a hmm containing the indices of all the empty cascades.
+ * Returns a set containing the indices of all the empty cascades.
  */
-static Something *find_empty(FreeCell *f)
+static IndexSet *find_empty(FreeCell *f)
 {
 	size_t i;
-	Something *hmm = indexset_new(f->num_cascades);
+	IndexSet *set = indexset_new(f->num_cascades);
 
 	for (i = 0; i < f->num_cascades; i++)
 	{
 		if (!f->cascades[i]->size)
-			hmm->data[hmm->size++] = i;
+			set->data[set->size++] = i;
 	}
 
-	return hmm;
+	return set;
 }
 
 /**
  * Recursive function for the transfer of multiple cards to an empty cascade.
  * Returns an updated quota for how many cards still need to be moved.
  */
-static size_t xyz(FreeCell *f, Something *hmm, size_t srci, size_t quota)
+static size_t xyz(FreeCell *f, IndexSet *set, size_t srci, size_t quota)
 {
-	/* TODO: use the FreeCells, add upper limit parameter */
 	size_t tmpi;
 	Transfer T = {0, 0, ST_CASCADE, ST_CASCADE};
 
 	T.srci = srci;
-	T.dsti = hmm->data[hmm->size - 1];
+	T.dsti = set->data[set->size - 1];
 
-	if (hmm->size == 1) /* No temporary columns */
+	if (set->size == 1) /* No temporary columns */
 	{
 		f_transfer(f, &T);
 		update_display(f, &T);
-		delay(200);
+		delay(DELAY_MS);
 		quota--;
 
 		return quota;
@@ -90,29 +92,46 @@ static size_t xyz(FreeCell *f, Something *hmm, size_t srci, size_t quota)
 	else
 	{
 		/* Source to temporary */
-		hmm->size--;
-		quota = xyz(f, hmm, srci, quota);
+		set->size--;
+		quota = xyz(f, set, srci, quota);
 
 		/* Source to destination */
-		tmpi = hmm->data[hmm->size - 1];
-		hmm->data[hmm->size - 1] = T.dsti;
+		tmpi = set->data[set->size - 1];
+		set->data[set->size - 1] = T.dsti;
 		if (quota)
-			quota = xyz(f, hmm, srci, quota);
+			quota = xyz(f, set, srci, quota);
 
 		/* Temporary to destination */
-		xyz(f, hmm, tmpi, f->cascades[tmpi]->size);
-		hmm->data[hmm->size - 1] = tmpi;
-		hmm->size++;
+		xyz(f, set, tmpi, f->cascades[tmpi]->size);
+		set->data[set->size - 1] = tmpi;
+		set->size++;
 
 		return quota;
 	}
+}
+
+static size_t log_2(size_t n)
+{
+	size_t i = 0;
+
+	if (!n) /* undefined */
+		return 0;
+
+	n--;
+	while (n)
+	{
+		i++;
+		n >>= 1;
+	}
+
+	return i;
 }
 
 int auto_transfer(FreeCell *f, const Transfer *t)
 {
 	int result;
 	size_t i, quota;
-	Something *hmm;
+	IndexSet *set;
 	Transfer T;
 	Cascade *src, *dst;
 
@@ -121,37 +140,46 @@ int auto_transfer(FreeCell *f, const Transfer *t)
 		src = f->cascades[t->srci];
 		dst = f->cascades[t->dsti];
 		quota = auto_card_count(src, dst);
-		hmm = find_empty(f);
+		set = find_empty(f);
 
-		if (quota--)
+		if (quota)
 		{
-			i = hmm->size; /* backup */
-			while (hmm->size)
+			/* Prevents this function from taking forever using math */
+			i = log_2(quota);
+			if (set->size > i)
+				set->size = i;
+
+			quota--;
+			i = set->size; /* backup */
+			while (set->size)
 			{
 				if (quota)
-					quota = xyz(f, hmm, t->srci, quota);
-				hmm->size--; /* achieves the effect of removal from set */
+					quota = xyz(f, set, t->srci, quota);
+				else
+					break;
+				set->size--; /* achieves the effect of removal from set */
 			}
-			hmm->size = i; /* restore */
+			set->size = i; /* restore */
 		}
 		else
 			return 0;
 
 		result = f_transfer(f, t);
 		update_display(f, t);
+		delay(DELAY_MS);
 
-		if (result)
+		T = *t;
+		if (!result)
+			T.dsti = T.srci;
+
+		for (i = 0; i < set->size; i++)
 		{
-			T = *t;
-			for (i = 0; i < hmm->size; i++)
-			{
-				T.srci = hmm->data[i];
-				if (f->cascades[T.srci]->size) /* check against empty */
-					auto_transfer(f, &T);
-			}
+			T.srci = set->data[i];
+			if (f->cascades[T.srci]->size) /* check against empty */
+				auto_transfer(f, &T);
 		}
 
-		free(hmm);
+		free(set);
 
 		return result;
 	}
