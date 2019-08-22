@@ -3,43 +3,39 @@ This is a FreeCell solitaire card game for MS-DOS written in C.
 
 ## Prerequisites
 
-This project requires a working version of MS-DOS. Unless you have a system that is old enough to support MS-DOS natively, I highly recommend using [DOSBox](https://www.dosbox.com/download.php?main=1).
+Windows 9x (95, 98, ME) and 32-bit NT (2000, XP, Vista, 7, 8, 8.1, 10) operating systems will support most MS-DOS applications natively. For users with modern systems, I highly recommend using [DOSBox](https://www.dosbox.com/download.php?main=1).
 
-
-Additionally, you will need a C compiler for MS-DOS. Use [Borland Turbo C 2.01](http://www.doshaven.eu/programming-tools/).
+Additionally, you will need [Borland Turbo C 2.01](https://archive.org/details/msdos_borland_turbo_c_2.01), which is a C compiler for MS-DOS.
 
 ## Installation
 
-1. Create a directory which contains Turbo C and this repository, and call it `root` or something like that. The directory structure of `root` should look like this:
+_The following instructions assume a fresh install of DOSBox._
+
+1. Create an enclosing directory (folder) for Turbo C and this repository. Give it the name `root`, or something similar. The directory structure should look like this:
 
     ```
-    ├── TC
-    │   ├── INCLUDE
-    │   │   └── SYS
-    │   └── LIB
-    └── freecell
+    root
+    ├── freecell
+    └── TC
+        ├── INCLUDE
+        │   └── SYS
+        └── LIB
     ```
 
-2. The next step is to configure DOSBox's startup script, which appears as a read-only file from inside DOSBox at the location `Z:\AUTOEXEC.BAT`. See [this resource](https://www.dosbox.com/wiki/Dosbox.conf) for help on modifying `autoexec`. Below is the sort of configuration you should use.
+2. Start DOSBox and enter the following commands:
 
-    ```
-    [autoexec]
-    # Lines in this section will be run at startup.
-    # You can put your MOUNT lines here.
-
-    MOUNT C root
+    ```bat
+    MOUNT C your/path/to/root
     SET PATH=%PATH%;C:\TC\
     C:
+    CD C:\FREECELL\
+    MAKE
+    FREECELL.EXE
     ```
-## Building
 
-Launch DOSBox and enter the following commands:
+## Controls
 
-```bat
-cd freecell
-make
-```
+To move cards around, press the keys indicated on the top row of the screen.
 
-## Running
-
-To run, simply run `freecell.exe`. For the time being, the controls are 'Q' to quit and 'N' to start a new game.
+* q: quit
+* n: new game
