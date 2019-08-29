@@ -75,12 +75,12 @@ void f_newgame(FreeCell *f, GameType gt)
 	deal(f);
 }
 
-int f_transfer(FreeCell *f, const Transfer *t)
+bool f_transfer(FreeCell *f, const Transfer *t)
 {
 	size_t i;
 	Card a, *b;
 	Cascade *dst;
-	int valid;
+	bool valid;
 
 	if (t->srct == t->dstt && t->srci == t->dsti)
 		return 1;

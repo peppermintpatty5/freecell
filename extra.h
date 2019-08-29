@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 
+#include "bool.h"
 #include "freecell.h"
 
 /**
@@ -12,6 +13,6 @@
  *
  * This function will also perform the necessary calls to 'update_display'.
  */
-int auto_transfer(FreeCell *f, const Transfer *t);
+bool auto_transfer(FreeCell *f, const Transfer *t);
 
 #endif

@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "bool.h"
 #include "freecell.h"
 
 /**
@@ -10,7 +11,7 @@
  * type 'y' or 'n'. The line is erased once either choice has been made. Return
  * values are non-zero for 'yes' and zero for 'no'.
  */
-int confirm_yn(const char *message);
+bool confirm_yn(const char *message);
 
 /**
  * Update the necessary parts of the display based on which components are

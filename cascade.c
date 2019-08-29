@@ -51,7 +51,7 @@ Card c_rm(Cascade *stack, size_t index)
 	return rm;
 }
 
-int can_stack(Card a, Card b)
+bool can_stack(Card a, Card b)
 {
 	return getrank(b) - getrank(a) == 1 && isblack(a) != isblack(b);
 }

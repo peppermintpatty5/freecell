@@ -3,6 +3,7 @@
 
 #include <stddef.h>
 
+#include "bool.h"
 #include "card.h"
 #include "cascade.h"
 
@@ -73,6 +74,6 @@ void f_newgame(FreeCell *f, GameType gt);
 /**
  * Performs a transfer on 'f' as specified by 't'.
  */
-int f_transfer(FreeCell *f, const Transfer *t);
+bool f_transfer(FreeCell *f, const Transfer *t);
 
 #endif

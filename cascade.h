@@ -3,7 +3,10 @@
 
 #include <stddef.h>
 
+#include "bool.h"
 #include "card.h"
+
+#define isEmpty(stack) !(stack)->size
 
 /**
  * Stack data structure of cards (bytes). The stacks of cards in FreeCell are
@@ -56,6 +59,6 @@ Card c_rm(Cascade *stack, size_t index);
 /**
  * Determines if card 'a' can stack on card 'b'.
  */
-int can_stack(Card a, Card b);
+bool can_stack(Card a, Card b);
 
 #endif

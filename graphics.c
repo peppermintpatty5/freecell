@@ -9,10 +9,10 @@
 
 #define hidecursor gotoxy(1, 1)
 
-static const char BORDER_TOP[] = "\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xBB",
-				  BORDER_MID[] = "\xC7\xC4\xC4\xC4\xC4\xC4\xC4\xB6",
-				  BORDER_BOT[] = "\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xBC",
-				  BORDER_L_R[] = "\xBA\x20\x20\x20\x20\x20\x20\xBA";
+#define BORDER_TOP "\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xBB"
+#define BORDER_MID "\xC7\xC4\xC4\xC4\xC4\xC4\xC4\xB6"
+#define BORDER_BOT "\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xBC"
+#define BORDER_L_R "\xBA\x20\x20\x20\x20\x20\x20\xBA"
 
 /**
  * Send the cursor to a card within a cascade.
@@ -80,9 +80,9 @@ static void pretty_borders(int x, int y)
 	}
 }
 
-int confirm_yn(const char *message)
+bool confirm_yn(const char *message)
 {
-	int status = 2;
+	bool status = 2;
 
 	gotoxy(1, 25);
 	textcolor(LIGHTGREEN);
@@ -96,11 +96,11 @@ int confirm_yn(const char *message)
 		{
 		case 'y':
 		case 'Y':
-			status = 1;
+			status = true;
 			break;
 		case 'n':
 		case 'N':
-			status = 0;
+			status = false;
 			break;
 		default:
 			break;
@@ -115,10 +115,10 @@ int confirm_yn(const char *message)
 /**
  * Updates only the top of the selected cascade on the display.
  */
-static void update_cascade(FreeCell *f, size_t index, int select)
+static void update_cascade(FreeCell *f, size_t index, bool select)
 {
 	Cascade *cascade = f->cascades[index];
-	char a = c_peek(cascade);
+	Card a = c_peek(cascade);
 
 	if (cascade->size)
 	{
@@ -132,7 +132,7 @@ static void update_cascade(FreeCell *f, size_t index, int select)
 	}
 }
 
-static void refresh_freecells(FreeCell *f, size_t index, int select)
+static void refresh_freecells(FreeCell *f, size_t index, bool select)
 {
 	size_t i;
 
@@ -148,7 +148,7 @@ static void refresh_freecells(FreeCell *f, size_t index, int select)
 
 static void refresh_homecells(FreeCell *f)
 {
-	char i;
+	size_t i;
 
 	for (i = 0; i < NUM_SUITS * f->num_decks; i++)
 	{
@@ -157,10 +157,10 @@ static void refresh_homecells(FreeCell *f)
 		{
 			textcolor(DARKGRAY);
 			textbackground(BLACK);
-			cprintf(" %c", i / f->num_decks + '\3');
+			cprintf(" %c", i / f->num_decks + '\x03');
 		}
 		else
-			cardprint(f->homecells[i], 0);
+			cardprint(f->homecells[i], false);
 	}
 }
 
@@ -179,10 +179,10 @@ void update_display(FreeCell *f, const Transfer *t)
 	switch (t->dstt)
 	{
 	case ST_CASCADE:
-		update_cascade(f, t->dsti, 0);
+		update_cascade(f, t->dsti, false);
 		break;
 	case ST_FREECELL:
-		refresh_freecells(f, t->srci, 0);
+		refresh_freecells(f, t->srci, false);
 		break;
 	case ST_HOMECELL:
 		refresh_homecells(f);
@@ -193,7 +193,6 @@ void update_display(FreeCell *f, const Transfer *t)
 void refresh(FreeCell *f)
 {
 	size_t i, j;
-	int select;
 
 	/* clear the screen */
 	textcolor(BLACK);
@@ -220,10 +219,10 @@ void refresh(FreeCell *f)
 		for (j = 0; j < f->cascades[i]->size; j++)
 		{
 			goto_cascade(f, i, j);
-			cardprint(f->cascades[i]->cards[j], 0);
+			cardprint(f->cascades[i]->cards[j], false);
 		}
 	}
-	refresh_freecells(f, 0, 0);
+	refresh_freecells(f, 0, false);
 	refresh_homecells(f);
 }
 
