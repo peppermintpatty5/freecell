@@ -17,7 +17,7 @@
 /**
  * Send the cursor to a card within a cascade.
  */
-static void goto_cascade(FreeCell *f, int cascadei, int cardi)
+static void goto_cascade(const FreeCell *f, int cascadei, int cardi)
 {
 	switch (f->num_decks)
 	{
@@ -33,7 +33,7 @@ static void goto_cascade(FreeCell *f, int cascadei, int cardi)
 /**
  * Move the cursor to the nth freecell.
  */
-static void goto_freecell(FreeCell *f, int index)
+static void goto_freecell(const FreeCell *f, int index)
 {
 	switch ((f->num_freecells + 3) / 4)
 	{
@@ -46,7 +46,7 @@ static void goto_freecell(FreeCell *f, int index)
 	}
 }
 
-static void goto_homecell(FreeCell *f, int index)
+static void goto_homecell(const FreeCell *f, int index)
 {
 	switch (f->num_decks)
 	{
@@ -115,7 +115,7 @@ bool confirm_yn(const char *message)
 /**
  * Updates only the top of the selected cascade on the display.
  */
-static void update_cascade(FreeCell *f, size_t index, bool select)
+static void update_cascade(const FreeCell *f, size_t index, bool select)
 {
 	Cascade *cascade = f->cascades[index];
 	Card a = c_peek(cascade);
@@ -132,7 +132,7 @@ static void update_cascade(FreeCell *f, size_t index, bool select)
 	}
 }
 
-static void refresh_freecells(FreeCell *f, size_t index, bool select)
+static void refresh_freecells(const FreeCell *f, size_t index, bool select)
 {
 	size_t i;
 
@@ -146,7 +146,7 @@ static void refresh_freecells(FreeCell *f, size_t index, bool select)
 	}
 }
 
-static void refresh_homecells(FreeCell *f)
+static void refresh_homecells(const FreeCell *f)
 {
 	size_t i;
 
@@ -164,7 +164,7 @@ static void refresh_homecells(FreeCell *f)
 	}
 }
 
-void update_display(FreeCell *f, const Transfer *t)
+void update_display(const FreeCell *f, const Transfer *t)
 {
 	switch (t->srct)
 	{
@@ -190,7 +190,7 @@ void update_display(FreeCell *f, const Transfer *t)
 	}
 }
 
-void refresh(FreeCell *f)
+void refresh(const FreeCell *f)
 {
 	size_t i, j;
 
@@ -226,7 +226,7 @@ void refresh(FreeCell *f)
 	refresh_homecells(f);
 }
 
-void accept_keypress(FreeCell *f, Transfer *t)
+void accept_keypress(const FreeCell *f, Transfer *t)
 {
 	int key;
 
