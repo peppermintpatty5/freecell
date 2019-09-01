@@ -46,8 +46,8 @@ static const unsigned char *const KING =
 	"\x10\x10\x10\x10";
 
 /**
- * Determine how many cards, if any, need to be moved. The quota can only be 0
- * if the destination is not empty. Otherwise, the maximum quota will be given.
+ * Determine how many cards, if any, need to be moved. The quota cannot be 0 if
+ * the destination is empty. Otherwise, the maximum quota will be given.
  */
 static size_t get_quota(Cascade *src, Cascade *dst);
 
@@ -243,7 +243,7 @@ static size_t n_tuple(FreeCell *f, const Transfer *t, size_t quota)
 
 bool auto_transfer(FreeCell *f, const Transfer *t)
 {
-	size_t i, quota;
+	size_t i, quota, n;
 	IndexSet *set;
 	Transfer T;
 	Cascade *src, *dst;
@@ -255,6 +255,9 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 		quota = get_quota(src, dst);
 		set = find_empty(f);
 
+		if (!quota) /* no move is possible */
+			return false;
+
 		if (isEmpty(dst))
 		{
 			n_tuple(f, t, quota);
@@ -262,15 +265,20 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 			return true;
 		}
 
-		if (!quota)
-			return false;
+		/* Determine how many cards can be put off until the very last step */
+		n = f->num_freecells - f->freecells->size + 1; /* n >= 1 */
+		if (n > quota)
+			n = quota;
 
+		quota -= n;
+
+#if 0
 		/* Prevents this function from taking forever using math */
 		i = log_2(quota);
 		if (set->size > i)
 			set->size = i;
+#endif
 
-		quota--;
 		i = set->size; /* backup */
 		while (set->size)
 		{
@@ -281,7 +289,8 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 			set->size--; /* achieves the effect of removal from set */
 		}
 		set->size = i; /* restore */
-		quota++;
+
+		quota += n;
 
 		quota = n_tuple(f, t, quota);
 		update_display(f, t);

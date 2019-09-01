@@ -20,14 +20,14 @@ int main(void)
 
 #if DEBUG
 	f_newgame(&F, DOUBLE_DECK);
-	F.num_freecells = 1;
+	F.num_freecells = 4;
 	F.num_cascades = 4;
 	for (i = 0; i < F.num_cascades; i++)
 		c_clr(F.cascades[i]);
 
-	for (i = 0; i < 10; i++)
-		c_push(F.cascades[0], getcard(NUM_RANKS - i - 1, i % 2 << 1));
-	c_push(F.cascades[1], getcard(12, 0));
+	for (i = 0; i < 9; i++)
+		c_push(F.cascades[0], getcard(NUM_RANKS - 1 - i, i % 2 << 1));
+	c_push(F.cascades[1], getcard(NUM_RANKS - 1, 0));
 	refresh(&F);
 #else
 	f_newgame(&F, DOUBLE_DECK);
