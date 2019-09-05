@@ -10,7 +10,7 @@ void f_init(FreeCell *f)
 {
 	size_t i;
 
-	for (i = 0; i < 10; i++)
+	for (i = 0; i < MAX_CASCADES; i++)
 		f->cascades[i] = cascade_new(MAX_CASCADE_SIZE);
 
 	f->freecells = cascade_new(MAX_FREECELLS);

@@ -46,8 +46,21 @@ static const unsigned char *const KING =
 	"\x10\x10\x10\x10";
 
 /**
+ * Code shortener for transfer and update with delay.
+ */
+static bool transfer_update(FreeCell *f, const Transfer *t);
+
+/**
  * Determine how many cards, if any, need to be moved. The quota cannot be 0 if
  * the destination is empty. Otherwise, the maximum quota will be given.
+ *
+ * Consider the following scenarios (ignore colors):
+ *
+ * quota = 3: {K, Q, J, 10} -> {K}
+ * quota = 4: {K, Q, J, 10} -> {}
+ *
+ * quota = 0: {K, Q, J, 9} -> {K}
+ * quota = 1: {K, Q, J, 9} -> {}
  */
 static size_t get_quota(Cascade *src, Cascade *dst);
 
@@ -92,27 +105,13 @@ static void ascii_king(int _x, int _y, bool flip_h)
 	}
 }
 
-typedef struct
+static bool transfer_update(FreeCell *f, const Transfer *t)
 {
-	size_t size;
-	size_t data[0];
-} IndexSet;
+	bool b = f_transfer(f, t);
+	update_display(f, t);
+	delay(DELAY_MS);
 
-static IndexSet *indexset_new(size_t max_size)
-{
-	IndexSet *set = malloc(sizeof(IndexSet) + max_size * sizeof(size_t));
-
-	if (set)
-	{
-		set->size = 0;
-	}
-	else
-	{
-		perror("malloc failed in indexset_new\n");
-		exit(EXIT_FAILURE);
-	}
-
-	return set;
+	return b;
 }
 
 static size_t get_quota(Cascade *src, Cascade *dst)
@@ -133,128 +132,107 @@ static size_t get_quota(Cascade *src, Cascade *dst)
 	return src->size - i;
 }
 
-/**
- * Returns a set containing the indices of all the empty cascades.
- */
-static IndexSet *find_empty(FreeCell *f)
+static size_t get_empty(size_t *arr, const FreeCell *f)
 {
-	size_t i;
-	IndexSet *set = indexset_new(f->num_cascades);
+	size_t i, j;
 
-	for (i = 0; i < f->num_cascades; i++)
+	for (i = j = 0; i < f->num_cascades; i++)
 	{
-		if (!f->cascades[i]->size)
-			set->data[set->size++] = i;
+		if (isEmpty(f->cascades[i]))
+			arr[j++] = i;
 	}
 
-	return set;
-}
-
-/**
- * Recursive function for the transfer of multiple cards to an empty cascade.
- * Returns an updated quota for how many cards still need to be moved.
- */
-static size_t zippo(FreeCell *f, IndexSet *set, size_t srci, size_t quota)
-{
-	size_t tmpi;
-	Transfer T = {0, 0, ST_CASCADE, ST_CASCADE};
-
-	T.srci = srci;
-	T.dsti = set->data[set->size - 1];
-
-	if (set->size == 1) /* No temporary columns */
-	{
-		return n_tuple(f, &T, quota);
-	}
-	else
-	{
-		/* Source to temporary */
-		set->size--;
-		quota = zippo(f, set, srci, quota);
-
-		/* Source to destination */
-		tmpi = set->data[set->size - 1];
-		set->data[set->size - 1] = T.dsti;
-		if (quota)
-			quota = zippo(f, set, srci, quota);
-
-		/* Temporary to destination */
-		zippo(f, set, tmpi, f->cascades[tmpi]->size);
-		set->data[set->size - 1] = tmpi;
-		set->size++;
-
-		return quota;
-	}
-}
-
-static size_t log_2(size_t n)
-{
-	size_t i = 0;
-
-	if (!n) /* undefined */
-		return 0;
-
-	n--;
-	while (n)
-	{
-		i++;
-		n >>= 1;
-	}
-
-	return i;
+	return j;
 }
 
 static size_t n_tuple(FreeCell *f, const Transfer *t, size_t quota)
 {
-	size_t i, n = f->num_freecells - f->freecells->size + 1;
+	size_t i, m;
 	Transfer T = *t;
 	bool okay;
 
-	if (n > quota)
-		n = quota;
+	m = f->num_freecells - f->freecells->size + 1;
+	if (m > quota)
+		m = quota;
 
+	/* m - 1 cards from source to freecells */
 	T.dstt = ST_FREECELL;
-	for (i = 0; i < n - 1; i++)
-	{
-		f_transfer(f, &T);
-		update_display(f, &T);
-		delay(DELAY_MS);
-	}
+	for (i = 0; i < m - 1; i++)
+		transfer_update(f, &T);
 
+	/* 1 card from source to destination */
 	T.dstt = ST_CASCADE;
-	okay = f_transfer(f, &T);
-	update_display(f, &T);
-	delay(DELAY_MS);
+	okay = transfer_update(f, &T);
 
+	/* m - 1 cards from freecells to destination */
 	T.srct = ST_FREECELL;
-	T.srci = f->freecells->size;
+	T.srci = f->freecells->size - 1;
 	if (!okay)
 		T.dsti = t->srci; /* undo */
-	for (i = 0; i < n - 1; i++)
+	for (i = 0; i < m - 1; i++, T.srci--)
+		transfer_update(f, &T);
+
+	return okay ? quota - m : quota;
+}
+
+/**
+ * Recursive function for the transfer of multiple cards from the source
+ * cascade to an empty cascade. Returns an updated quota for how many cards
+ * still need to be moved.
+ */
+static size_t zippo(FreeCell *f, Transfer *t, size_t quota, size_t level)
+{
+	Transfer T = *t;
+	size_t empty[MAX_CASCADES], n, i;
+
+	if (!quota)
+		return 0;
+
+	n = get_empty(empty, f);
+	for (i = 0; i < n; i++)
 	{
-		T.srci--;
-		f_transfer(f, &T);
-		update_display(f, &T);
-		delay(DELAY_MS);
+		if (empty[i] != t->dsti)
+			break;
+	}
+	i = empty[i];
+
+	if (!level || !n)
+	{
+		quota = n_tuple(f, &T, quota);
+	}
+	else
+	{
+		/* Source to temporary */
+		T.dsti = i;
+		quota = zippo(f, &T, quota, level - 1);
+
+		/* Source to destination */
+		T.dsti = t->dsti;
+		quota = zippo(f, &T, quota, level - 1);
+
+		/* Temporary to destination */
+		T.srci = i;
+		zippo(f, &T, f->cascades[i]->size, level - 1);
 	}
 
-	return okay ? quota - n : quota;
+	return quota;
 }
 
 bool auto_transfer(FreeCell *f, const Transfer *t)
 {
-	size_t i, quota, n;
-	IndexSet *set;
-	Transfer T;
+	size_t i, quota, m, n, empty[MAX_CASCADES];
+	Transfer T = *t;
 	Cascade *src, *dst;
 
 	if (t->srct == ST_CASCADE && t->dstt == ST_CASCADE && t->srci != t->dsti)
 	{
 		src = f->cascades[t->srci];
 		dst = f->cascades[t->dsti];
-		quota = get_quota(src, dst);
-		set = find_empty(f);
 
+		if (isEmpty(src))
+			return false;
+
+		quota = get_quota(src, dst);
 		if (!quota) /* no move is possible */
 			return false;
 
@@ -265,49 +243,41 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 			return true;
 		}
 
-		/* Determine how many cards can be put off until the very last step */
-		n = f->num_freecells - f->freecells->size + 1; /* n >= 1 */
-		if (n > quota)
-			n = quota;
+		/* Calculate m and n, which are used in formula */
+		m = f->num_freecells - f->freecells->size + 1;
+		if (m > quota)
+			m = quota;
+		n = get_empty(empty, f);
 
-		quota -= n;
-
-#if 0
-		/* Prevents this function from taking forever using math */
-		i = log_2(quota);
-		if (set->size > i)
-			set->size = i;
-#endif
-
-		i = set->size; /* backup */
-		while (set->size)
+		/* Only use as many cascades as needed for efficiency */
+		if (n)
 		{
+			while (m << n - 1 >= quota)
+				n--;
+		}
+
+		/* Call recursive unloading method */
+		quota -= m;
+		for (i = 0; i < n; i++)
+		{
+			T.dsti = empty[i];
 			if (quota)
-				quota = zippo(f, set, t->srci, quota);
-			else
-				break;
-			set->size--; /* achieves the effect of removal from set */
+				quota = zippo(f, &T, quota, n - i - 1);
 		}
-		set->size = i; /* restore */
+		quota += m;
 
-		quota += n;
+		/* Source to destination */
+		T.dsti = t->dsti;
+		quota = n_tuple(f, &T, quota);
 
-		quota = n_tuple(f, t, quota);
-		update_display(f, t);
-		delay(DELAY_MS);
-
-		T = *t;
-		if (quota)			 /* cards yet to be moved */
-			T.dsti = T.srci; /* so reverse everything */
-
-		for (i = 0; i < set->size; i++)
+		/* Put everything else back */
+		if (quota)
+			T.dsti = t->srci;
+		while (i--)
 		{
-			T.srci = set->data[i];
-			if (f->cascades[T.srci]->size) /* check against empty */
-				auto_transfer(f, &T);
+			T.srci = empty[i];
+			auto_transfer(f, &T);
 		}
-
-		free(set);
 
 		return !quota;
 	}
