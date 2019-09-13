@@ -16,33 +16,33 @@
 #define MAX_CASCADES (10)
 #define MAX_FREECELLS (8)
 
-typedef enum
+enum gametype
 {
 	SINGLE_DECK,
 	DOUBLE_DECK
-} GameType;
+};
 
-typedef enum
+enum selection
 {
 	ST_NONE,
 	ST_CASCADE,
 	ST_FREECELL,
 	ST_HOMECELL
-} SelectType;
+};
 
 /**
  * Contains the data for a game of FreeCell. Supports both single and double
  * deck FreeCell variations.
  */
-typedef struct
+struct game
 {
 	size_t num_decks;
 	size_t num_cascades;
 	size_t num_freecells;
-	Cascade *cascades[MAX_CASCADES];
-	Cascade *freecells;
+	struct cascade *cascades[MAX_CASCADES];
+	struct cascade *freecells;
 	Card homecells[NUM_SUITS * MAX_DECKS];
-} FreeCell;
+};
 
 /**
  * Contains the data for transferring a single card. 'scri' and 'dsti' are the
@@ -52,28 +52,28 @@ typedef struct
  * If 'srct' equals 'dstt' and 'srci' equals 'dsti', then the repsective
  * location is to be deselected.
  */
-typedef struct
+struct transfer
 {
 	/* TODO: replace with unions? which may be more elegant */
 	size_t srci;
 	size_t dsti;
-	SelectType srct;
-	SelectType dstt;
-} Transfer;
+	enum selection srct;
+	enum selection dstt;
+};
 
 /**
  * Struct members that are pointers must be initialized before use.
  */
-void f_init(FreeCell *f);
+void f_init(struct game *g);
 
 /**
  * Deals a new FreeCell game according to presets specified by the game type.
  */
-void f_newgame(FreeCell *f, GameType gt);
+void f_newgame(struct game *g, enum gametype gt);
 
 /**
  * Performs a transfer on 'f' as specified by 't'.
  */
-bool f_transfer(FreeCell *f, const Transfer *t);
+bool f_transfer(struct game *g, const struct transfer *t);
 
 #endif

@@ -48,7 +48,7 @@ static const unsigned char *const KING =
 /**
  * Code shortener for transfer and update with delay.
  */
-static bool transfer_update(FreeCell *f, const Transfer *t);
+static bool transfer_update(struct game *g, const struct transfer *t);
 
 /**
  * Determine how many cards, if any, need to be moved. The quota cannot be 0 if
@@ -62,9 +62,9 @@ static bool transfer_update(FreeCell *f, const Transfer *t);
  * quota = 0: {K, Q, J, 9} -> {K}
  * quota = 1: {K, Q, J, 9} -> {}
  */
-static size_t get_quota(Cascade *src, Cascade *dst);
+static size_t get_quota(struct cascade *src, struct cascade *dst);
 
-static size_t n_tuple(FreeCell *f, const Transfer *t, size_t quota);
+static size_t n_tuple(struct game *g, const struct transfer *t, size_t quota);
 
 /**
  * Prints out a picture of a king to the screen, using ASCII art. The top-left
@@ -105,16 +105,16 @@ static void ascii_king(int _x, int _y, bool flip_h)
 	}
 }
 
-static bool transfer_update(FreeCell *f, const Transfer *t)
+static bool transfer_update(struct game *g, const struct transfer *t)
 {
-	bool b = f_transfer(f, t);
-	update_display(f, t);
+	bool b = f_transfer(g, t);
+	update_display(g, t);
 	delay(DELAY_MS);
 
 	return b;
 }
 
-static size_t get_quota(Cascade *src, Cascade *dst)
+static size_t get_quota(struct cascade *src, struct cascade *dst)
 {
 	Card b;
 	size_t i = src->size;
@@ -132,45 +132,45 @@ static size_t get_quota(Cascade *src, Cascade *dst)
 	return src->size - i;
 }
 
-static size_t get_empty(size_t *arr, const FreeCell *f)
+static size_t get_empty(size_t *arr, const struct game *g)
 {
 	size_t i, j;
 
-	for (i = j = 0; i < f->num_cascades; i++)
+	for (i = j = 0; i < g->num_cascades; i++)
 	{
-		if (isEmpty(f->cascades[i]))
+		if (isEmpty(g->cascades[i]))
 			arr[j++] = i;
 	}
 
 	return j;
 }
 
-static size_t n_tuple(FreeCell *f, const Transfer *t, size_t quota)
+static size_t n_tuple(struct game *g, const struct transfer *t, size_t quota)
 {
 	size_t i, m;
-	Transfer T = *t;
+	struct transfer T = *t;
 	bool okay;
 
-	m = f->num_freecells - f->freecells->size + 1;
+	m = g->num_freecells - g->freecells->size + 1;
 	if (m > quota)
 		m = quota;
 
 	/* m - 1 cards from source to freecells */
 	T.dstt = ST_FREECELL;
 	for (i = 0; i < m - 1; i++)
-		transfer_update(f, &T);
+		transfer_update(g, &T);
 
 	/* 1 card from source to destination */
 	T.dstt = ST_CASCADE;
-	okay = transfer_update(f, &T);
+	okay = transfer_update(g, &T);
 
 	/* m - 1 cards from freecells to destination */
 	T.srct = ST_FREECELL;
-	T.srci = f->freecells->size - 1;
+	T.srci = g->freecells->size - 1;
 	if (!okay)
 		T.dsti = t->srci; /* undo */
 	for (i = 0; i < m - 1; i++, T.srci--)
-		transfer_update(f, &T);
+		transfer_update(g, &T);
 
 	return okay ? quota - m : quota;
 }
@@ -180,15 +180,16 @@ static size_t n_tuple(FreeCell *f, const Transfer *t, size_t quota)
  * cascade to an empty cascade. Returns an updated quota for how many cards
  * still need to be moved.
  */
-static size_t zippo(FreeCell *f, Transfer *t, size_t quota, size_t level)
+static size_t zippo(struct game *g, const struct transfer *t, size_t quota,
+					size_t level)
 {
-	Transfer T = *t;
+	struct transfer T = *t;
 	size_t empty[MAX_CASCADES], n, i;
 
 	if (!quota)
 		return 0;
 
-	n = get_empty(empty, f);
+	n = get_empty(empty, g);
 	for (i = 0; i < n; i++)
 	{
 		if (empty[i] != t->dsti)
@@ -198,36 +199,36 @@ static size_t zippo(FreeCell *f, Transfer *t, size_t quota, size_t level)
 
 	if (!level || !n)
 	{
-		quota = n_tuple(f, &T, quota);
+		quota = n_tuple(g, &T, quota);
 	}
 	else
 	{
 		/* Source to temporary */
 		T.dsti = i;
-		quota = zippo(f, &T, quota, level - 1);
+		quota = zippo(g, &T, quota, level - 1);
 
 		/* Source to destination */
 		T.dsti = t->dsti;
-		quota = zippo(f, &T, quota, level - 1);
+		quota = zippo(g, &T, quota, level - 1);
 
 		/* Temporary to destination */
 		T.srci = i;
-		zippo(f, &T, f->cascades[i]->size, level - 1);
+		zippo(g, &T, g->cascades[i]->size, level - 1);
 	}
 
 	return quota;
 }
 
-bool auto_transfer(FreeCell *f, const Transfer *t)
+bool auto_transfer(struct game *g, const struct transfer *t)
 {
 	size_t i, quota, m, n, empty[MAX_CASCADES];
-	Transfer T = *t;
-	Cascade *src, *dst;
+	struct transfer T = *t;
+	struct cascade *src, *dst;
 
 	if (t->srct == ST_CASCADE && t->dstt == ST_CASCADE && t->srci != t->dsti)
 	{
-		src = f->cascades[t->srci];
-		dst = f->cascades[t->dsti];
+		src = g->cascades[t->srci];
+		dst = g->cascades[t->dsti];
 
 		if (isEmpty(src))
 			return false;
@@ -238,16 +239,16 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 
 		if (isEmpty(dst))
 		{
-			n_tuple(f, t, quota);
+			n_tuple(g, t, quota);
 
 			return true;
 		}
 
 		/* Calculate m and n, which are used in formula */
-		m = f->num_freecells - f->freecells->size + 1;
+		m = g->num_freecells - g->freecells->size + 1;
 		if (m > quota)
 			m = quota;
-		n = get_empty(empty, f);
+		n = get_empty(empty, g);
 
 		/* Only use as many cascades as needed for efficiency */
 		if (n)
@@ -262,13 +263,13 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 		{
 			T.dsti = empty[i];
 			if (quota)
-				quota = zippo(f, &T, quota, n - i - 1);
+				quota = zippo(g, &T, quota, n - i - 1);
 		}
 		quota += m;
 
 		/* Source to destination */
 		T.dsti = t->dsti;
-		quota = n_tuple(f, &T, quota);
+		quota = n_tuple(g, &T, quota);
 
 		/* Put everything else back */
 		if (quota)
@@ -276,11 +277,11 @@ bool auto_transfer(FreeCell *f, const Transfer *t)
 		while (i--)
 		{
 			T.srci = empty[i];
-			auto_transfer(f, &T);
+			auto_transfer(g, &T);
 		}
 
 		return !quota;
 	}
 	else
-		return f_transfer(f, t);
+		return f_transfer(g, t);
 }

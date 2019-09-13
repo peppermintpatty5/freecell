@@ -6,7 +6,7 @@
 
 #include "freecell.h"
 
-void f_init(FreeCell *f)
+void f_init(struct game *f)
 {
 	size_t i;
 
@@ -19,7 +19,7 @@ void f_init(FreeCell *f)
 /**
  * Clears the cascades and deals 'f->num_decks' shuffled decks.
  */
-static void deal(FreeCell *f)
+static void deal(struct game *f)
 {
 	size_t i, j, r, j_ = 0;
 	Card deck[NUM_CARDS], c;
@@ -45,7 +45,7 @@ static void deal(FreeCell *f)
 	}
 }
 
-void f_newgame(FreeCell *f, GameType gt)
+void f_newgame(struct game *f, enum gametype gt)
 {
 	size_t i;
 
@@ -75,15 +75,15 @@ void f_newgame(FreeCell *f, GameType gt)
 	deal(f);
 }
 
-bool f_transfer(FreeCell *f, const Transfer *t)
+bool f_transfer(struct game *f, const struct transfer *t)
 {
 	size_t i;
 	Card a, *b;
-	Cascade *dst;
+	struct cascade *dst;
 	bool valid;
 
 	if (t->srct == t->dstt && t->srci == t->dsti)
-		return 1;
+		return true;
 
 	switch (t->srct)
 	{
@@ -125,7 +125,7 @@ bool f_transfer(FreeCell *f, const Transfer *t)
 		}
 		break;
 	default:
-		return 0;
+		return false;
 	}
 
 	if (valid)

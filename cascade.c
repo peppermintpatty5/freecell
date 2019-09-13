@@ -2,9 +2,10 @@
 
 #include "cascade.h"
 
-Cascade *cascade_new(size_t max_size)
+struct cascade *cascade_new(size_t max_size)
 {
-	Cascade *stack = malloc(sizeof(Cascade) + max_size * sizeof(Card));
+	struct cascade *stack = malloc(
+		sizeof(struct cascade) + max_size * sizeof(Card));
 
 	if (stack)
 	{
@@ -19,27 +20,27 @@ Cascade *cascade_new(size_t max_size)
 	return stack;
 }
 
-void c_clr(Cascade *stack)
+void c_clr(struct cascade *stack)
 {
 	stack->size = 0;
 }
 
-void c_push(Cascade *stack, Card card)
+void c_push(struct cascade *stack, Card card)
 {
 	stack->cards[stack->size++] = card;
 }
 
-Card c_peek(Cascade *stack)
+Card c_peek(struct cascade *stack)
 {
 	return stack->cards[stack->size - 1];
 }
 
-Card c_pop(Cascade *stack)
+Card c_pop(struct cascade *stack)
 {
 	return stack->cards[--stack->size];
 }
 
-Card c_rm(Cascade *stack, size_t index)
+Card c_rm(struct cascade *stack, size_t index)
 {
 	size_t i;
 	Card rm = stack->cards[index];

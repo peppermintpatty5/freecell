@@ -11,44 +11,44 @@
 
 int main(void)
 {
-	FreeCell F;
-	Transfer T;
+	struct game G;
+	struct transfer T;
 	size_t i;
 
-	f_init(&F);
+	f_init(&G);
 	g_init();
 	T.srct = T.dstt = ST_NONE;
 
 #if DEBUG
-	f_newgame(&F, DOUBLE_DECK);
-	F.num_freecells = 0;
-	F.num_cascades = 10;
-	for (i = 0; i < F.num_cascades; i++)
-		c_clr(F.cascades[i]);
+	f_newgame(&G, DOUBLE_DECK);
+	G.num_freecells = 0;
+	G.num_cascades = 10;
+	for (i = 0; i < G.num_cascades; i++)
+		c_clr(G.cascades[i]);
 
 	for (i = 0; i < 13; i++)
-		c_push(F.cascades[0], getcard(NUM_RANKS - 1 - i, i % 2 << 1));
-	c_push(F.cascades[1], getcard(NUM_RANKS - 1, 0));
-	refresh(&F);
+		c_push(G.cascades[0], getcard(NUM_RANKS - 1 - i, i % 2 << 1));
+	c_push(G.cascades[1], getcard(NUM_RANKS - 1, 0));
+	refresh(&G);
 #else
-	f_newgame(&F, DOUBLE_DECK);
-	refresh(&F);
+	f_newgame(&G, DOUBLE_DECK);
+	refresh(&G);
 #endif
 
 	while (true)
 	{
-		accept_keypress(&F, &T);
-		i = EXTRA ? auto_transfer(&F, &T) : f_transfer(&F, &T);
+		accept_keypress(&G, &T);
+		i = EXTRA ? auto_transfer(&G, &T) : f_transfer(&G, &T);
 
 		if (i)
 		{
-			update_display(&F, &T);
+			update_display(&G, &T);
 			T.srct = T.dstt = ST_NONE;
 		}
 		else
 		{
 			T.dstt = ST_NONE;
-			update_display(&F, &T);
+			update_display(&G, &T);
 		}
 	}
 }

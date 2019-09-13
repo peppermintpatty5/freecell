@@ -17,9 +17,9 @@
 /**
  * Send the cursor to a card within a cascade.
  */
-static void goto_cascade(const FreeCell *f, int cascadei, int cardi)
+static void goto_cascade(const struct game *g, int cascadei, int cardi)
 {
-	switch (f->num_decks)
+	switch (g->num_decks)
 	{
 	case 1:
 		gotoxy(6 * cascadei + 17, cardi + 3);
@@ -33,22 +33,30 @@ static void goto_cascade(const FreeCell *f, int cascadei, int cardi)
 /**
  * Move the cursor to the nth freecell.
  */
-static void goto_freecell(const FreeCell *f, int index)
+static void goto_freecell(const struct game *g, int index)
 {
-	switch ((f->num_freecells + 3) / 4)
+	int y;
+	const int case3[] = {3, 4, 5, 7, 8, 9, 11, 12, 13, 15, 16, 17};
+
+	switch ((g->num_freecells + 3) / 4)
 	{
 	case 1: /* [1, 4] */
-		gotoxy(3, 4 * index + 4);
+		y = 4 * index + 4;
 		break;
 	case 2: /* [5, 8] */
-		gotoxy(3, 2 * index + 3);
+		y = 2 * index + 3;
+		break;
+	case 3: /* [9, 12] */
+		y = case3[index];
 		break;
 	}
+
+	gotoxy(3, y);
 }
 
-static void goto_homecell(const FreeCell *f, int index)
+static void goto_homecell(const struct game *g, int index)
 {
-	switch (f->num_decks)
+	switch (g->num_decks)
 	{
 	case 1:
 		gotoxy(73, 4 * index + 4);
@@ -82,32 +90,37 @@ static void pretty_borders(int x, int y)
 
 bool confirm_yn(const char *message)
 {
-	bool status = 2;
+	int buf[80];
+	bool done = false, status;
+
+	gettext(1, 25, 80, 25, buf);
 
 	gotoxy(1, 25);
-	textcolor(LIGHTGREEN);
+	textcolor(LIGHTBLUE);
 	textbackground(BLACK);
 	cprintf("%s (Y/N)", message);
 	hidecursor;
 
-	while (status == 2)
+	while (!done)
 	{
 		switch (getch())
 		{
 		case 'y':
 		case 'Y':
 			status = true;
+			done = true;
 			break;
 		case 'n':
 		case 'N':
 			status = false;
+			done = true;
 			break;
 		default:
 			break;
 		}
 	}
-	gotoxy(1, 25);
-	delline();
+
+	puttext(1, 25, 80, 25, buf);
 
 	return status;
 }
@@ -115,82 +128,82 @@ bool confirm_yn(const char *message)
 /**
  * Updates only the top of the selected cascade on the display.
  */
-static void update_cascade(const FreeCell *f, size_t index, bool select)
+static void update_cascade(const struct game *g, size_t index, bool select)
 {
-	Cascade *cascade = f->cascades[index];
+	struct cascade *cascade = g->cascades[index];
 	Card a = c_peek(cascade);
 
 	if (cascade->size)
 	{
-		goto_cascade(f, index, cascade->size - 1);
+		goto_cascade(g, index, cascade->size - 1);
 		cardprint(a, select);
 	}
 	if (cascade->size < MAX_CASCADE_SIZE)
 	{
-		goto_cascade(f, index, cascade->size);
+		goto_cascade(g, index, cascade->size);
 		carderase();
 	}
 }
 
-static void refresh_freecells(const FreeCell *f, size_t index, bool select)
+static void refresh_freecells(const struct game *g, size_t index, bool select)
 {
 	size_t i;
 
-	for (i = 0; i < f->num_freecells; i++)
+	for (i = 0; i < g->num_freecells; i++)
 	{
-		goto_freecell(f, i);
-		if (i < f->freecells->size)
-			cardprint(f->freecells->cards[i], select && i == index);
+		goto_freecell(g, i);
+		if (i < g->freecells->size)
+			cardprint(g->freecells->cards[i], select && i == index);
 		else
 			carderase();
 	}
 }
 
-static void refresh_homecells(const FreeCell *f)
+static void refresh_homecells(const struct game *g)
 {
 	size_t i;
 
-	for (i = 0; i < NUM_SUITS * f->num_decks; i++)
+	for (i = 0; i < NUM_SUITS * g->num_decks; i++)
 	{
-		goto_homecell(f, i);
-		if (f->homecells[i] == NUM_CARDS)
+		goto_homecell(g, i);
+		if (g->homecells[i] == NUM_CARDS)
 		{
 			textcolor(DARKGRAY);
 			textbackground(BLACK);
-			cprintf(" %c", i / f->num_decks + '\x03');
+			cprintf(" %c", i / g->num_decks + '\x03');
 		}
 		else
-			cardprint(f->homecells[i], false);
+			cardprint(g->homecells[i], false);
 	}
 }
 
-void update_display(const FreeCell *f, const Transfer *t)
+void update_display(const struct game *g, const struct transfer *t)
 {
 	switch (t->srct)
 	{
 	case ST_CASCADE:
-		update_cascade(f, t->srci, t->dstt == ST_NONE);
+		update_cascade(g, t->srci, t->dstt == ST_NONE);
 		break;
 	case ST_FREECELL:
-		refresh_freecells(f, t->srci, t->dstt == ST_NONE);
+		refresh_freecells(g, t->srci, t->dstt == ST_NONE);
 		break;
 	}
 
 	switch (t->dstt)
 	{
 	case ST_CASCADE:
-		update_cascade(f, t->dsti, false);
+		update_cascade(g, t->dsti, false);
 		break;
 	case ST_FREECELL:
-		refresh_freecells(f, t->srci, false);
+		refresh_freecells(g, t->srci, false);
 		break;
 	case ST_HOMECELL:
-		refresh_homecells(f);
+		refresh_homecells(g);
 		break;
 	}
 }
 
-void refresh(const FreeCell *f)
+void refresh(const struct game *g)
 {
 	size_t i, j;
 
@@ -207,26 +220,26 @@ void refresh(const FreeCell *f)
 	cprintf("A");
 	gotoxy(75, 1);
 	cprintf("B");
-	for (i = 0; i < f->num_cascades; i++)
+	for (i = 0; i < g->num_cascades; i++)
 	{
-		goto_cascade(f, i, -2);
+		goto_cascade(g, i, -2);
 		cprintf("  %d", i);
 	}
 
 	/* print the cascades */
-	for (i = 0; i < f->num_cascades; i++)
+	for (i = 0; i < g->num_cascades; i++)
 	{
-		for (j = 0; j < f->cascades[i]->size; j++)
+		for (j = 0; j < g->cascades[i]->size; j++)
 		{
-			goto_cascade(f, i, j);
-			cardprint(f->cascades[i]->cards[j], false);
+			goto_cascade(g, i, j);
+			cardprint(g->cascades[i]->cards[j], false);
 		}
 	}
-	refresh_freecells(f, 0, false);
-	refresh_homecells(f);
+	refresh_freecells(g, 0, false);
+	refresh_homecells(g);
 }
 
-void accept_keypress(const FreeCell *f, Transfer *t)
+void accept_keypress(const struct game *g, struct transfer *t)
 {
 	int key;
 
@@ -249,8 +262,8 @@ void accept_keypress(const FreeCell *f, Transfer *t)
 		if (confirm_yn("Start a new game?"))
 		{
 			t->srct = t->dstt = ST_NONE;
-			f_newgame(f, SINGLE_DECK);
-			refresh(f);
+			f_newgame(g, SINGLE_DECK);
+			refresh(g);
 		}
 		break;
 	case 'a':
@@ -259,9 +272,9 @@ void accept_keypress(const FreeCell *f, Transfer *t)
 		{
 		case ST_NONE:
 			/* cannot select empty freecells */
-			if (f->freecells->size)
+			if (g->freecells->size)
 			{
-				t->srci = f->freecells->size - 1;
+				t->srci = g->freecells->size - 1;
 				t->srct = ST_FREECELL;
 			}
 			break;
@@ -293,13 +306,13 @@ void accept_keypress(const FreeCell *f, Transfer *t)
 		break;
 	default:
 		key -= '0';
-		if (key >= 0 && key < f->num_cascades)
+		if (key >= 0 && key < g->num_cascades)
 		{
 			switch (t->srct)
 			{
 			case ST_NONE:
 				/* cannot select empty cascade */
-				if (f->cascades[t->srci = key]->size)
+				if (g->cascades[t->srci = key]->size)
 					t->srct = ST_CASCADE;
 				break;
 			default:
